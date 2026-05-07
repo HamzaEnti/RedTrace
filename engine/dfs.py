@@ -16,14 +16,29 @@ class CycleDetector:
         self._cycles: List[List[str]] = []
 
     def find_cycles(self) -> List[List[str]]:
-        """Retorna tots els cicles del graf. TODO: implementar _dfs."""
         self._visited.clear()
         self._on_stack.clear()
         self._stack.clear()
         self._cycles.clear()
-        # TODO: cridar _dfs per a cada node no visitat
-        return []
+
+        for nid in self.graph.node_ids:
+            if nid not in self._visited:
+                self._dfs(nid)
+
+        return [list(c) for c in self._cycles]
 
     def _dfs(self, u: str) -> None:
-        """TODO: implementar recorregut DFS recursiu."""
-        raise NotImplementedError
+        self._visited.add(u)
+        self._on_stack.add(u)
+        self._stack.append(u)
+
+        for v in self.graph.neighbors(u):
+            if v not in self._visited:
+                self._dfs(v)
+            elif v in self._on_stack:
+                idx = self._stack.index(v)
+                cycle = self._stack[idx:] + [v]
+                self._cycles.append(cycle)
+
+        self._on_stack.discard(u)
+        self._stack.pop()
