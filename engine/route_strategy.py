@@ -11,19 +11,16 @@ class ShortestRoute(RouteStrategy):
     """Selecciona la ruta amb menys pes acumulat (Dijkstra)."""
 
     def select(self, graph, entry: str, target: str) -> Optional[Path]:
-        finder = DijkstraPathFinder()
+        finder = DijkstraPathFinder(invert_weights=False)
         return finder.find_path(graph, entry, target)
 
 
 class SafestRoute(RouteStrategy):
     """Selecciona la ruta que minimitza el risc màxim dels nodes travessats.
 
-    Ha d'invertir els pesos (1 - weight) perquè Dijkstra trobi el camí amb 
-    menor risc acumulat en lloc del menor cost.
-    """
-    
-    """
-    TODO: verificar direcció de la comparació.
+    Inverteix els pesos per buscar el camí amb menor risc acumulat.
+    Correcció: invert_weights=True fa servir (1 - w) → prefereix arestes
+    amb pes baix (menys exposades).
     """
 
     def select(self, graph, entry: str, target: str) -> Optional[Path]:

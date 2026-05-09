@@ -38,7 +38,10 @@ class CycleDetector:
             elif v in self._on_stack:
                 idx = self._stack.index(v)
                 cycle = self._stack[idx:] + [v]
-                self._cycles.append(cycle)
+                # Deduplicació bàsica per longitud
+                if not any(len(c) == len(cycle) and set(c) == set(cycle)
+                           for c in self._cycles):
+                    self._cycles.append(cycle)
 
         self._on_stack.discard(u)
         self._stack.pop()
