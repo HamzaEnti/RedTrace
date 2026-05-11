@@ -1,36 +1,65 @@
-"""Interfície gràfica de RedTrace — v2: tabs i sidebar."""
+"""Interfície gràfica de RedTrace — v3: tema fosc."""
 
 import sys
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("QtAgg")
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QApplication,
-    QFileDialog,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QPushButton,
-    QRadioButton,
-    QButtonGroup,
-    QSizePolicy,
-    QTabWidget,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-    QFrame,
+    QApplication, QButtonGroup, QFileDialog, QFrame,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
+    QRadioButton, QSizePolicy, QTabWidget, QTextEdit,
+    QVBoxLayout, QWidget,
 )
 
 from engine.graph import TopologyGraph
 from engine.route_strategy import SafestRoute, ShortestRoute
 from scanner.parser import NetworkParser
 
+COL_BG      = "#0E0E12"
+COL_PANEL   = "#181821"
+COL_CARD    = "#23232E"
+COL_BORDER  = "#2D2D3A"
+COL_ACCENT  = "#E53935"
+COL_TEXT    = "#ECEFF4"
+COL_TEXT_DIM = "#7A8090"
+
+STYLESHEET = f"""
+* {{ font-family: "Segoe UI", sans-serif; }}
+QMainWindow, QWidget {{ background: {COL_BG}; color: {COL_TEXT}; }}
+QFrame#sidebar {{ background: {COL_PANEL}; border-radius: 8px; }}
+QFrame#mainPanel {{ background: {COL_PANEL}; border-radius: 8px; }}
+QLineEdit {{
+    background: {COL_CARD}; color: {COL_TEXT};
+    border: 1px solid {COL_BORDER}; border-radius: 4px;
+    padding: 4px 8px;
+}}
+QPushButton {{
+    background: {COL_ACCENT}; color: white; border: none;
+    border-radius: 4px; padding: 6px 12px; font-weight: bold;
+}}
+QPushButton:hover {{ background: #C62828; }}
+QRadioButton {{ color: {COL_TEXT}; }}
+QTabWidget::pane {{ border: 1px solid {COL_BORDER}; background: {COL_PANEL}; }}
+QTabBar::tab {{
+    background: {COL_CARD}; color: {COL_TEXT_DIM};
+    padding: 6px 16px; border: none;
+}}
+QTabBar::tab:selected {{ color: {COL_TEXT}; border-bottom: 2px solid {COL_ACCENT}; }}
+QTextEdit {{ background: {COL_CARD}; color: {COL_TEXT}; border: none; }}
+QLabel {{ color: {COL_TEXT_DIM}; font-size: 11px; }}
+"""
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("RedTrace")
-        self.resize(1100, 700)
+        self.resize(1100, 720)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -40,59 +69,70 @@ class MainWindow(QMainWindow):
 
         # ── Sidebar ──────────────────────────
         sidebar = QFrame()
-        sidebar.setFixedWidth(260)
-        sb_layout = QVBoxLayout(sidebar)
-        sb_layout.setSpacing(10)
+        sidebar.setObjectName("sidebar")
+        sidebar.setFixedWidth(240)
+        sb = QVBoxLayout(sidebar)
+        sb.setContentsMargins(14, 14, 14, 14)
+        sb.setSpacing(10)
 
-        sb_layout.addWidget(QLabel("Topologia"))
+        lbl_brand = QLabel("REDTRACE")
+        lbl_brand.setStyleSheet(f"color:{COL_ACCENT};font-size:18px;font-weight:800;")
+        sb.addWidget(lbl_brand)
+        sb.addWidget(QLabel("Topologia"))
+
         row_topo = QHBoxLayout()
         self.topo_path = QLineEdit("data/topology_mock.json")
         row_topo.addWidget(self.topo_path)
-        btn_browse = QPushButton("…")
-        btn_browse.setFixedWidth(28)
-        btn_browse.clicked.connect(self._browse)
-        row_topo.addWidget(btn_browse)
-        sb_layout.addLayout(row_topo)
+        btn_b = QPushButton("…")
+        btn_b.setFixedWidth(28)
+        btn_b.setStyleSheet(f"background:{COL_CARD};color:{COL_TEXT};border:1px solid {COL_BORDER};")
+        btn_b.clicked.connect(self._browse)
+        row_topo.addWidget(btn_b)
+        sb.addLayout(row_topo)
 
-        sb_layout.addWidget(QLabel("Entry IP"))
+        sb.addWidget(QLabel("Entry IP"))
         self.entry_ip = QLineEdit("192.168.1.1")
-        sb_layout.addWidget(self.entry_ip)
+        sb.addWidget(self.entry_ip)
 
-        sb_layout.addWidget(QLabel("Target IP"))
+        sb.addWidget(QLabel("Target IP"))
         self.target_ip = QLineEdit("192.168.1.100")
-        sb_layout.addWidget(self.target_ip)
+        sb.addWidget(self.target_ip)
 
-        sb_layout.addWidget(QLabel("Estratègia"))
+        sb.addWidget(QLabel("Estratègia"))
         self.rb_shortest = QRadioButton("Shortest")
-        self.rb_safest = QRadioButton("Safest")
+        self.rb_safest   = QRadioButton("Safest")
         self.rb_shortest.setChecked(True)
         grp = QButtonGroup(self)
         grp.addButton(self.rb_shortest)
         grp.addButton(self.rb_safest)
-        sb_layout.addWidget(self.rb_shortest)
-        sb_layout.addWidget(self.rb_safest)
+        sb.addWidget(self.rb_shortest)
+        sb.addWidget(self.rb_safest)
 
-        sb_layout.addSpacing(8)
+        sb.addSpacing(8)
         self.run_btn = QPushButton("▶  Analitzar")
         self.run_btn.clicked.connect(self._run)
-        sb_layout.addWidget(self.run_btn)
-        sb_layout.addStretch()
-
+        sb.addWidget(self.run_btn)
+        sb.addStretch()
         root.addWidget(sidebar)
 
-        # ── Main panel: tabs ──────────────────
+        # ── Main: tabs ──────────────────────
+        main_panel = QFrame()
+        main_panel.setObjectName("mainPanel")
+        mp = QVBoxLayout(main_panel)
+        mp.setContentsMargins(8, 8, 8, 8)
         self.tabs = QTabWidget()
-        root.addWidget(self.tabs)
+        mp.addWidget(self.tabs)
+        root.addWidget(main_panel)
 
         self.output = QTextEdit()
         self.output.setReadOnly(True)
         self.output.setFontFamily("Courier New")
         self.tabs.addTab(self.output, "Resultat")
 
-        # TODO: afegir tab de Graf
-        placeholder = QLabel("Graf de xarxa — pròximament")
-        placeholder.setAlignment(__import__("PySide6.QtCore", fromlist=["Qt"]).Qt.AlignCenter)
-        self.tabs.addTab(placeholder, "Graf")
+        # Graf placeholder
+        self._fig = Figure(facecolor=COL_CARD)
+        self._canvas = FigureCanvasQTAgg(self._fig)
+        self.tabs.addTab(self._canvas, "Graf")
 
     def _browse(self):
         path, _ = QFileDialog.getOpenFileName(self, "Obre topologia", "", "JSON (*.json)")
@@ -129,6 +169,7 @@ class MainWindow(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    app.setStyleSheet(STYLESHEET)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
