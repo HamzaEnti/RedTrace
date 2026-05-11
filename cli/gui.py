@@ -1,10 +1,12 @@
-"""Interfície gràfica de RedTrace — v3: tema fosc."""
+"""Interfície gràfica de RedTrace — v4: visualització del graf."""
 
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 import matplotlib
 matplotlib.use("QtAgg")
+import networkx as nx
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
@@ -12,21 +14,34 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QFileDialog, QFrame,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton,
-    QRadioButton, QSizePolicy, QTabWidget, QTextEdit,
-    QVBoxLayout, QWidget,
+    QRadioButton, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
+from engine.decision_tree import DecisionTreeRiskClassifier
+from engine.dfs import CycleDetector
 from engine.graph import TopologyGraph
+from engine.ids_sim import IDSSimulator
+from engine.risk import make_classifier
 from engine.route_strategy import SafestRoute, ShortestRoute
+from engine.types import AnalysisReport, RiskLevel
 from scanner.parser import NetworkParser
 
-COL_BG      = "#0E0E12"
-COL_PANEL   = "#181821"
-COL_CARD    = "#23232E"
-COL_BORDER  = "#2D2D3A"
-COL_ACCENT  = "#E53935"
-COL_TEXT    = "#ECEFF4"
+COL_BG       = "#0E0E12"
+COL_PANEL    = "#181821"
+COL_CARD     = "#23232E"
+COL_BORDER   = "#2D2D3A"
+COL_ACCENT   = "#E53935"
+COL_TEXT     = "#ECEFF4"
 COL_TEXT_DIM = "#7A8090"
+COL_LOW      = "#43A047"
+COL_MEDIUM   = "#FB8C00"
+COL_CRITICAL = "#E53935"
+
+LEVEL_COLOR = {
+    RiskLevel.LOW: COL_LOW,
+    RiskLevel.MEDIUM: COL_MEDIUM,
+    RiskLevel.CRITICAL: COL_CRITICAL,
+}
 
 STYLESHEET = f"""
 * {{ font-family: "Segoe UI", sans-serif; }}
@@ -35,8 +50,7 @@ QFrame#sidebar {{ background: {COL_PANEL}; border-radius: 8px; }}
 QFrame#mainPanel {{ background: {COL_PANEL}; border-radius: 8px; }}
 QLineEdit {{
     background: {COL_CARD}; color: {COL_TEXT};
-    border: 1px solid {COL_BORDER}; border-radius: 4px;
-    padding: 4px 8px;
+    border: 1px solid {COL_BORDER}; border-radius: 4px; padding: 4px 8px;
 }}
 QPushButton {{
     background: {COL_ACCENT}; color: white; border: none;
@@ -46,20 +60,67 @@ QPushButton:hover {{ background: #C62828; }}
 QRadioButton {{ color: {COL_TEXT}; }}
 QTabWidget::pane {{ border: 1px solid {COL_BORDER}; background: {COL_PANEL}; }}
 QTabBar::tab {{
-    background: {COL_CARD}; color: {COL_TEXT_DIM};
-    padding: 6px 16px; border: none;
+    background: {COL_CARD}; color: {COL_TEXT_DIM}; padding: 6px 16px; border: none;
 }}
 QTabBar::tab:selected {{ color: {COL_TEXT}; border-bottom: 2px solid {COL_ACCENT}; }}
-QTextEdit {{ background: {COL_CARD}; color: {COL_TEXT}; border: none; }}
+QTextEdit {{ background: {COL_CARD}; color: {COL_TEXT}; border: none; padding: 6px; }}
 QLabel {{ color: {COL_TEXT_DIM}; font-size: 11px; }}
 """
+
+
+class NetworkCanvas(FigureCanvasQTAgg):
+    def __init__(self):
+        self._fig = Figure(facecolor=COL_CARD)
+        super().__init__(self._fig)
+        self._ax = self._fig.add_subplot(111)
+        self._ax.set_facecolor(COL_CARD)
+
+    def draw_graph(self, graph: TopologyGraph,
+                   attack_path: Optional[List[str]] = None,
+                   classifications=None):
+        self._ax.clear()
+        self._ax.set_facecolor(COL_CARD)
+        g = graph.raw
+        if g.number_of_nodes() == 0:
+            self.draw()
+            return
+
+        pos = nx.spring_layout(g, seed=42)
+        node_colors = []
+        for nid in g.nodes:
+            node = graph.get_node(nid)
+            if classifications and node:
+                lvl = classifications.get(nid, RiskLevel.LOW)
+                node_colors.append(LEVEL_COLOR[lvl])
+            else:
+                node_colors.append("#555566")
+
+        nx.draw_networkx_nodes(g, pos, ax=self._ax,
+                               node_color=node_colors, node_size=700, alpha=0.9)
+        nx.draw_networkx_labels(g, pos, ax=self._ax,
+                                font_color="white", font_size=7)
+        nx.draw_networkx_edges(g, pos, ax=self._ax,
+                               edge_color="#555", arrows=True,
+                               arrowsize=15, alpha=0.6)
+
+        if attack_path and len(attack_path) > 1:
+            path_edges = list(zip(attack_path[:-1], attack_path[1:]))
+            nx.draw_networkx_edges(g, pos, edgelist=path_edges, ax=self._ax,
+                                   edge_color=COL_ACCENT, width=3,
+                                   arrows=True, arrowsize=20)
+
+        self._ax.axis("off")
+        self._fig.tight_layout()
+        self.draw()
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("RedTrace")
-        self.resize(1100, 720)
+        self.resize(1150, 740)
+        self._graph: Optional[TopologyGraph] = None
+        self._report: Optional[AnalysisReport] = None
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -67,7 +128,7 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
 
-        # ── Sidebar ──────────────────────────
+        # ── Sidebar ─────────────────────────────────────────────
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
         sidebar.setFixedWidth(240)
@@ -78,29 +139,31 @@ class MainWindow(QMainWindow):
         lbl_brand = QLabel("REDTRACE")
         lbl_brand.setStyleSheet(f"color:{COL_ACCENT};font-size:18px;font-weight:800;")
         sb.addWidget(lbl_brand)
-        sb.addWidget(QLabel("Topologia"))
+        lbl_tag = QLabel("Lateral Movement Simulator")
+        sb.addWidget(lbl_tag)
 
-        row_topo = QHBoxLayout()
+        sb.addWidget(QLabel("TOPOLOGIA"))
+        row_t = QHBoxLayout()
         self.topo_path = QLineEdit("data/topology_mock.json")
-        row_topo.addWidget(self.topo_path)
+        row_t.addWidget(self.topo_path)
         btn_b = QPushButton("…")
         btn_b.setFixedWidth(28)
-        btn_b.setStyleSheet(f"background:{COL_CARD};color:{COL_TEXT};border:1px solid {COL_BORDER};")
+        btn_b.setStyleSheet(f"background:{COL_CARD};color:{COL_TEXT};border:1px solid {COL_BORDER};font-weight:normal;")
         btn_b.clicked.connect(self._browse)
-        row_topo.addWidget(btn_b)
-        sb.addLayout(row_topo)
+        row_t.addWidget(btn_b)
+        sb.addLayout(row_t)
 
-        sb.addWidget(QLabel("Entry IP"))
+        sb.addWidget(QLabel("ENTRY IP"))
         self.entry_ip = QLineEdit("192.168.1.1")
         sb.addWidget(self.entry_ip)
 
-        sb.addWidget(QLabel("Target IP"))
+        sb.addWidget(QLabel("TARGET IP"))
         self.target_ip = QLineEdit("192.168.1.100")
         sb.addWidget(self.target_ip)
 
-        sb.addWidget(QLabel("Estratègia"))
-        self.rb_shortest = QRadioButton("Shortest")
-        self.rb_safest   = QRadioButton("Safest")
+        sb.addWidget(QLabel("ESTRATÈGIA"))
+        self.rb_shortest = QRadioButton("Shortest path")
+        self.rb_safest   = QRadioButton("Safest path")
         self.rb_shortest.setChecked(True)
         grp = QButtonGroup(self)
         grp.addButton(self.rb_shortest)
@@ -115,7 +178,7 @@ class MainWindow(QMainWindow):
         sb.addStretch()
         root.addWidget(sidebar)
 
-        # ── Main: tabs ──────────────────────
+        # ── Main panel ──────────────────────────────────────────
         main_panel = QFrame()
         main_panel.setObjectName("mainPanel")
         mp = QVBoxLayout(main_panel)
@@ -124,15 +187,15 @@ class MainWindow(QMainWindow):
         mp.addWidget(self.tabs)
         root.addWidget(main_panel)
 
+        # Tab Graf
+        self._net_canvas = NetworkCanvas()
+        self.tabs.addTab(self._net_canvas, "Graf")
+
+        # Tab Resultat
         self.output = QTextEdit()
         self.output.setReadOnly(True)
         self.output.setFontFamily("Courier New")
         self.tabs.addTab(self.output, "Resultat")
-
-        # Graf placeholder
-        self._fig = Figure(facecolor=COL_CARD)
-        self._canvas = FigureCanvasQTAgg(self._fig)
-        self.tabs.addTab(self._canvas, "Graf")
 
     def _browse(self):
         path, _ = QFileDialog.getOpenFileName(self, "Obre topologia", "", "JSON (*.json)")
@@ -154,15 +217,34 @@ class MainWindow(QMainWindow):
                 graph.add_node(n)
             for e in edges:
                 graph.add_edge(e)
+            self._graph = graph
+
+            classifier = DecisionTreeRiskClassifier()
+            classifier.annotate_nodes(nodes)
+            classifications = {n.id: n.risk_level for n in nodes}
+
             strategy = SafestRoute() if self.rb_safest.isChecked() else ShortestRoute()
             path = strategy.select(graph, entry, target)
+
+            ids = IDSSimulator()
+            ids_result = ids.evaluate(path) if path else None
+
             if path:
-                lines = [f"Ruta trobada ({path.hops} salts, cost {path.total_weight:.3f}):"]
-                lines.append(" → ".join(n.id for n in path.nodes))
-                lines.append(f"Risc mitjà: {path.avg_risk:.2f}")
+                node_ids = [n.id for n in path.nodes]
+                self._net_canvas.draw_graph(graph, node_ids, classifications)
+                lines = [
+                    f"Ruta trobada ({path.hops} salts, cost {path.total_weight:.3f})",
+                    "─" * 40,
+                    " → ".join(node_ids),
+                    f"Risc mitjà: {path.avg_risk:.2f}",
+                ]
+                if ids_result:
+                    lines += ["", f"IDS: {ids_result.message}"]
                 self.output.setText("\n".join(lines))
             else:
+                self._net_canvas.draw_graph(graph, classifications=classifications)
                 self.output.setText("No s'ha trobat cap ruta.")
+            self.tabs.setCurrentIndex(0)
         except Exception as ex:
             self.output.setText(f"[ERROR] {ex}")
 
