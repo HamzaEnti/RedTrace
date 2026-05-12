@@ -1,4 +1,4 @@
-"""Interfície gràfica de RedTrace — v5: footer IDS i tab d'informe."""
+"""Interfície gràfica de RedTrace — v6: tabs de cicles i estadístiques."""
 
 import sys
 from pathlib import Path
@@ -26,7 +26,6 @@ from engine.ids_sim import IDSSimulator
 from engine.risk import make_classifier
 from engine.route_strategy import SafestRoute, ShortestRoute
 from engine.types import AnalysisReport, Path as RTPath, RiskLevel
-from report.generator import TextReportGenerator
 from scanner.parser import NetworkParser
 
 COL_BG       = "#0E0E12"
@@ -57,6 +56,7 @@ QFrame#footer {{ background: {COL_PANEL}; border-top: 1px solid {COL_BORDER}; }}
 QFrame#sidebar {{ background: {COL_PANEL}; border-radius: 10px; }}
 QFrame#mainPanel {{ background: {COL_PANEL}; border-radius: 10px; }}
 QFrame#separator {{ background: {COL_BORDER}; max-height: 1px; min-height: 1px; }}
+QFrame#card {{ background: {COL_CARD}; border-radius: 8px; }}
 QLineEdit {{
     background: {COL_CARD}; color: {COL_TEXT};
     border: 1px solid {COL_BORDER}; border-radius: 6px; padding: 5px 10px;
@@ -69,8 +69,7 @@ QPushButton#runBtn {{
 QPushButton#runBtn:hover {{ background: {COL_ACCENT_DARK}; }}
 QPushButton#browseBtn {{
     background: {COL_CARD}; color: {COL_TEXT_DIM};
-    border: 1px solid {COL_BORDER}; border-radius: 6px;
-    padding: 5px 10px;
+    border: 1px solid {COL_BORDER}; border-radius: 6px; padding: 5px 10px;
 }}
 QRadioButton {{ color: {COL_TEXT}; spacing: 6px; }}
 QTabWidget::pane {{ border: 1px solid {COL_BORDER}; background: {COL_PANEL}; border-radius: 6px; }}
@@ -84,9 +83,11 @@ QScrollArea {{ border: none; background: transparent; }}
 QLabel#brand {{ color: {COL_ACCENT}; font-size: 22px; font-weight: 800; }}
 QLabel#tagline {{ color: {COL_TEXT_DIM}; font-size: 12px; }}
 QLabel#sectionTitle {{ color: {COL_ACCENT}; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; }}
-QLabel#fieldLabel {{ color: {COL_TEXT_DIM}; font-size: 11px; font-weight: 500; }}
+QLabel#fieldLabel {{ color: {COL_TEXT_DIM}; font-size: 11px; }}
 QLabel#statusOk  {{ color: {COL_TEXT_DIM}; font-size: 11px; }}
 QLabel#statusErr {{ color: {COL_ACCENT}; font-size: 11px; font-weight: 600; }}
+QLabel#statValue {{ color: {COL_TEXT}; font-size: 22px; font-weight: 700; }}
+QLabel#statLabel {{ color: {COL_TEXT_DIM}; font-size: 10px; }}
 """
 
 
@@ -103,38 +104,45 @@ class NetworkCanvas(FigureCanvasQTAgg):
         self._ax.clear()
         self._ax.set_facecolor(COL_CARD)
         g = graph.raw
-        if g.number_of_nodes() == 0:
+        if not g.number_of_nodes():
             self.draw()
             return
-
         pos = nx.spring_layout(g, seed=42)
-        node_colors = []
-        for nid in g.nodes:
-            node = graph.get_node(nid)
-            lvl = (classifications or {}).get(nid, RiskLevel.LOW) if node else RiskLevel.LOW
-            node_colors.append(LEVEL_COLOR[lvl])
-
-        nx.draw_networkx_nodes(g, pos, ax=self._ax, node_color=node_colors,
-                               node_size=750, alpha=0.9)
+        node_colors = [
+            LEVEL_COLOR.get((classifications or {}).get(nid, RiskLevel.LOW), "#555566")
+            for nid in g.nodes
+        ]
+        nx.draw_networkx_nodes(g, pos, ax=self._ax, node_color=node_colors, node_size=750)
         nx.draw_networkx_labels(g, pos, ax=self._ax, font_color="white", font_size=7)
-        nx.draw_networkx_edges(g, pos, ax=self._ax, edge_color="#555",
-                               arrows=True, arrowsize=15, alpha=0.5)
-
+        nx.draw_networkx_edges(g, pos, ax=self._ax, edge_color="#555", arrows=True, arrowsize=15, alpha=0.5)
         if attack_path and len(attack_path) > 1:
-            path_edges = list(zip(attack_path[:-1], attack_path[1:]))
-            nx.draw_networkx_edges(g, pos, edgelist=path_edges, ax=self._ax,
-                                   edge_color=COL_ACCENT, width=3,
-                                   arrows=True, arrowsize=20)
+            nx.draw_networkx_edges(g, pos,
+                edgelist=list(zip(attack_path[:-1], attack_path[1:])),
+                ax=self._ax, edge_color=COL_ACCENT, width=3, arrows=True, arrowsize=20)
         self._ax.axis("off")
         self._fig.tight_layout()
         self.draw()
 
 
-def _lbl(text, name=None, parent=None):
-    l = QLabel(text, parent)
+def _lbl(text, name=None):
+    l = QLabel(text)
     if name:
         l.setObjectName(name)
     return l
+
+
+def _stat_card(value, label):
+    card = QFrame()
+    card.setObjectName("card")
+    lay = QVBoxLayout(card)
+    lay.setContentsMargins(16, 14, 16, 14)
+    lv = _lbl(str(value), "statValue")
+    lv.setAlignment(Qt.AlignCenter)
+    ll = _lbl(label, "statLabel")
+    ll.setAlignment(Qt.AlignCenter)
+    lay.addWidget(lv)
+    lay.addWidget(ll)
+    return card, lv
 
 
 class MainWindow(QMainWindow):
@@ -143,7 +151,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("RedTrace")
         self.resize(1200, 760)
         self._graph: Optional[TopologyGraph] = None
-        self._report: Optional[AnalysisReport] = None
 
         root_w = QWidget()
         self.setCentralWidget(root_w)
@@ -151,14 +158,13 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Header ──────────────────────────────────────────────
+        # Header
         header = QFrame()
         header.setObjectName("header")
         header.setFixedHeight(56)
         hdr = QHBoxLayout(header)
         hdr.setContentsMargins(20, 0, 20, 0)
-        lbl_b = _lbl("REDTRACE", "brand")
-        hdr.addWidget(lbl_b)
+        hdr.addWidget(_lbl("REDTRACE", "brand"))
         hdr.addSpacing(12)
         hdr.addWidget(_lbl("Lateral Movement Simulator", "tagline"))
         hdr.addStretch()
@@ -166,7 +172,6 @@ class MainWindow(QMainWindow):
         hdr.addWidget(self.lbl_status)
         root.addWidget(header)
 
-        # ── Body ─────────────────────────────────────────────────
         body = QWidget()
         body_lay = QHBoxLayout(body)
         body_lay.setContentsMargins(12, 12, 12, 12)
@@ -180,7 +185,6 @@ class MainWindow(QMainWindow):
         sb = QVBoxLayout(sidebar)
         sb.setContentsMargins(16, 16, 16, 16)
         sb.setSpacing(8)
-
         sb.addWidget(_lbl("TOPOLOGIA", "sectionTitle"))
         row_t = QHBoxLayout()
         self.topo_path = QLineEdit("data/topology_mock.json")
@@ -191,17 +195,12 @@ class MainWindow(QMainWindow):
         btn_b.clicked.connect(self._browse)
         row_t.addWidget(btn_b)
         sb.addLayout(row_t)
-
-        sb.addSpacing(4)
         sb.addWidget(_lbl("ENTRY IP", "sectionTitle"))
         self.entry_ip = QLineEdit("192.168.1.1")
         sb.addWidget(self.entry_ip)
-
         sb.addWidget(_lbl("TARGET IP", "sectionTitle"))
         self.target_ip = QLineEdit("192.168.1.100")
         sb.addWidget(self.target_ip)
-
-        sb.addSpacing(4)
         sb.addWidget(_lbl("ESTRATÈGIA", "sectionTitle"))
         self.rb_shortest = QRadioButton("Shortest path")
         self.rb_safest   = QRadioButton("Safest path")
@@ -211,7 +210,6 @@ class MainWindow(QMainWindow):
         grp.addButton(self.rb_safest)
         sb.addWidget(self.rb_shortest)
         sb.addWidget(self.rb_safest)
-
         sb.addSpacing(12)
         self.run_btn = QPushButton("▶  Analitzar")
         self.run_btn.setObjectName("runBtn")
@@ -220,7 +218,7 @@ class MainWindow(QMainWindow):
         sb.addStretch()
         body_lay.addWidget(sidebar)
 
-        # Main panel
+        # Main tabs
         main_panel = QFrame()
         main_panel.setObjectName("mainPanel")
         mp = QVBoxLayout(main_panel)
@@ -237,15 +235,36 @@ class MainWindow(QMainWindow):
         self.output.setFontFamily("Courier New")
         self.tabs.addTab(self.output, "Informe")
 
-        # ── Footer IDS ──────────────────────────────────────────
+        # Tab Cicles
+        self.cycles_view = QTextEdit()
+        self.cycles_view.setReadOnly(True)
+        self.tabs.addTab(self.cycles_view, "Cicles")
+
+        # Tab Estadístiques
+        stats_w = QWidget()
+        stats_lay = QGridLayout(stats_w)
+        stats_lay.setContentsMargins(16, 16, 16, 16)
+        stats_lay.setSpacing(10)
+        card_nodes, self.sv_nodes   = _stat_card("—", "Nodes")
+        card_edges, self.sv_edges   = _stat_card("—", "Arestes")
+        card_hops,  self.sv_hops    = _stat_card("—", "Salts ruta")
+        card_risk,  self.sv_risk    = _stat_card("—", "Risc mitjà")
+        card_cyc,   self.sv_cycles  = _stat_card("—", "Cicles detectats")
+        card_ids,   self.sv_ids     = _stat_card("—", "Firmes IDS activ.")
+        for i, card in enumerate([card_nodes, card_edges, card_hops,
+                                   card_risk, card_cyc, card_ids]):
+            stats_lay.addWidget(card, i // 3, i % 3)
+        self.tabs.addTab(stats_w, "Estadístiques")
+
+        # Footer IDS
         footer = QFrame()
         footer.setObjectName("footer")
         footer.setFixedHeight(40)
         ftr = QHBoxLayout(footer)
         ftr.setContentsMargins(20, 0, 20, 0)
-        lbl_ids_label = _lbl("IDS")
-        lbl_ids_label.setStyleSheet(f"color:{COL_ACCENT};font-weight:700;font-size:11px;")
-        ftr.addWidget(lbl_ids_label)
+        lbl_ids_lbl = _lbl("IDS")
+        lbl_ids_lbl.setStyleSheet(f"color:{COL_ACCENT};font-weight:700;font-size:11px;")
+        ftr.addWidget(lbl_ids_lbl)
         ftr.addSpacing(8)
         self.lbl_ids = _lbl("En espera d'anàlisi…", "statusOk")
         ftr.addWidget(self.lbl_ids)
@@ -262,20 +281,20 @@ class MainWindow(QMainWindow):
         entry = self.entry_ip.text().strip()
         target = self.target_ip.text().strip()
         if not Path(topo).is_file():
-            self.lbl_status.setText(f"Error: {topo} no trobat")
-            self.lbl_status.setObjectName("statusErr")
+            self.lbl_status.setText(f"Error: {topo}")
             return
         try:
             parser = NetworkParser(topo)
             nodes, edges, _, _ = parser.load()
-            graph = TopologyGraph()
-            for n in nodes:
-                graph.add_node(n)
-            for e in edges:
-                graph.add_edge(e)
+            graph = TopologyGraph.build if hasattr(TopologyGraph, "build") else TopologyGraph()
+            if callable(getattr(TopologyGraph, "build", None)):
+                graph = TopologyGraph().build(nodes, edges)
+            else:
+                graph = TopologyGraph()
+                for n in nodes: graph.add_node(n)
+                for e in edges: graph.add_edge(e)
             self._graph = graph
             self.lbl_status.setText(f"{graph.num_nodes()} nodes · {graph.num_edges()} arestes")
-            self.lbl_status.setObjectName("statusOk")
 
             classifier = DecisionTreeRiskClassifier()
             classifier.annotate_nodes(nodes)
@@ -284,9 +303,13 @@ class MainWindow(QMainWindow):
             strategy = SafestRoute() if self.rb_safest.isChecked() else ShortestRoute()
             path = strategy.select(graph, entry, target)
 
+            detector = CycleDetector(graph)
+            cycles = detector.find_cycles()
+
             ids = IDSSimulator()
             ids_result = ids.evaluate(path) if path else None
 
+            # Update IDS footer
             if ids_result and ids_result.detected:
                 self.lbl_ids.setText(f"⚠ ALERTA — {ids_result.message}")
                 self.lbl_ids.setObjectName("statusErr")
@@ -294,13 +317,26 @@ class MainWindow(QMainWindow):
                 self.lbl_ids.setText("✔ Cap firma activada")
                 self.lbl_ids.setObjectName("statusOk")
 
+            # Update cycles tab
+            if cycles:
+                self.cycles_view.setText("\n".join(
+                    f"Cicle {i+1}: {' → '.join(c)}" for i, c in enumerate(cycles)
+                ))
+            else:
+                self.cycles_view.setText("Cap cicle detectat.")
+
+            # Update stats
+            self.sv_nodes.setText(str(graph.num_nodes()))
+            self.sv_edges.setText(str(graph.num_edges()))
+            self.sv_cycles.setText(str(len(cycles)))
+            self.sv_ids.setText(str(len(ids_result.triggered_signatures) if ids_result else 0))
+
             if path:
                 node_ids = [n.id for n in path.nodes]
                 self._net_canvas.draw_graph(graph, node_ids, classifications)
                 recs = []
                 for nid in node_ids:
-                    lvl = classifications.get(nid, RiskLevel.LOW)
-                    clf = make_classifier(lvl)
+                    clf = make_classifier(classifications.get(nid, RiskLevel.LOW))
                     for r in clf.get_recommendations():
                         recs.append(f"  • {r}")
                 lines = [
@@ -308,13 +344,16 @@ class MainWindow(QMainWindow):
                     "─" * 50,
                     " → ".join(node_ids),
                     f"Risc mitjà: {path.avg_risk:.2f}",
-                    "",
-                    "Recomanacions:",
+                    "", "Recomanacions:",
                 ] + recs
                 self.output.setText("\n".join(lines))
+                self.sv_hops.setText(str(path.hops))
+                self.sv_risk.setText(f"{path.avg_risk:.2f}")
             else:
                 self._net_canvas.draw_graph(graph, classifications=classifications)
                 self.output.setText("No s'ha trobat cap ruta.")
+                self.sv_hops.setText("—")
+                self.sv_risk.setText("—")
             self.tabs.setCurrentIndex(0)
         except Exception as ex:
             self.output.setText(f"[ERROR] {ex}")
