@@ -1,6 +1,6 @@
 """DFS recursiu per detectar cicles al graf de topologia."""
 
-from typing import List, Set
+from typing import Dict, List, Set
 
 from engine.graph import TopologyGraph
 
@@ -38,10 +38,24 @@ class CycleDetector:
             elif v in self._on_stack:
                 idx = self._stack.index(v)
                 cycle = self._stack[idx:] + [v]
-                # Deduplicació bàsica per longitud
-                if not any(len(c) == len(cycle) and set(c) == set(cycle)
-                           for c in self._cycles):
+                if not self._is_duplicate(cycle):
                     self._cycles.append(cycle)
 
         self._on_stack.discard(u)
         self._stack.pop()
+
+    def _is_duplicate(self, cycle: List[str]) -> bool:
+        norm = self._normalize(cycle)
+        for existing in self._cycles:
+            if self._normalize(existing) == norm:
+                return True
+        return False
+
+    @staticmethod
+    def _normalize(cycle: List[str]) -> tuple:
+        body = cycle[:-1]
+        if not body:
+            return tuple(cycle)
+        min_idx = body.index(min(body))
+        rotated = body[min_idx:] + body[:min_idx]
+        return tuple(rotated)
