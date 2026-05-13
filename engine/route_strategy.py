@@ -1,28 +1,37 @@
-"""Estratègies de ruta per seleccionar el camí d'atac òptim."""
+"""Estratègies polimòrfiques per seleccionar rutes (R3 enunciat)."""
 
-from typing import Optional
+from typing import Optional, Set
 
 from engine.base import RouteStrategy
-from engine.dijkstra import DijkstraPathFinder
+from engine.dijkstra import DijkstraFinder
+from engine.graph import TopologyGraph
 from engine.types import Path
 
 
-class ShortestRoute(RouteStrategy):
-    """Selecciona la ruta amb menys pes acumulat (Dijkstra)."""
+CRITICAL_RISK_THRESHOLD = 0.80
 
-    def select(self, graph, entry: str, target: str) -> Optional[Path]:
-        finder = DijkstraPathFinder(invert_weights=False)
-        return finder.find_path(graph, entry, target)
+
+class ShortestRoute(RouteStrategy):
+    """Ruta de menor pes total: Dijkstra clàssic sense restriccions."""
+
+    def select(
+        self, graph: TopologyGraph, entry: str, target: str
+    ) -> Optional[Path]:
+        return DijkstraFinder().find_path(graph, entry, target)
 
 
 class SafestRoute(RouteStrategy):
-    """Selecciona la ruta que minimitza el risc màxim dels nodes travessats.
+    """Evita els nodes amb risc igual o superior al llindar crític."""
 
-    Inverteix els pesos per buscar el camí amb menor risc acumulat.
-    Correcció: invert_weights=True fa servir (1 - w) → prefereix arestes
-    amb pes baix (menys exposades).
-    """
+    def __init__(self, threshold: float = CRITICAL_RISK_THRESHOLD):
+        self.threshold = threshold
 
-    def select(self, graph, entry: str, target: str) -> Optional[Path]:
-        finder = DijkstraPathFinder(invert_weights=True)
-        return finder.find_path(graph, entry, target)
+    def select(
+        self, graph: TopologyGraph, entry: str, target: str
+    ) -> Optional[Path]:
+        blocked: Set[str] = {
+            n.id
+            for n in graph.nodes
+            if n.risk >= self.threshold and n.id not in (entry, target)
+        }
+        return DijkstraFinder(blocked_nodes=blocked).find_path(graph, entry, target)
