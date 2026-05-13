@@ -1,7 +1,7 @@
 """Subclasses polimòrfiques de RiskClassifier (LOW/MEDIUM/CRITICAL).
 
-Cada nivell encapsula color de visualització. Les recomanacions
-s'ampliaran en iteracions posteriors.
+Cada nivell encapsula color de visualització.La classificació la fa l'arbre de 
+decisió a decision_tree.py aquestes classes només encapsulen la resposta.
 """
 
 from typing import Dict, List, Type
@@ -16,7 +16,11 @@ class LowRisk(RiskClassifier):
         return RiskLevel.LOW
 
     def get_recommendations(self) -> List[str]:
-        return ["Mantenir actualitzacions periòdiques del sistema operatiu"]
+        return [
+            "Mantenir actualitzacions periòdiques del sistema operatiu",
+            "Monitoritzar logs setmanalment",
+            "Verificar la configuració del firewall localment",
+            ]
 
     def get_color(self) -> str:
         return"#4CAF50"
@@ -28,7 +32,12 @@ class MediumRisk(RiskClassifier):
         return RiskLevel.MEDIUM
 
     def get_recommendations(self) -> List[str]:
-        return ["Restringir l'accés per IP origen quan sigui possible"]
+        return [
+            "Restringir l'accés per IP origen quan sigui possible",
+            "Implementar autenticació de doble factor als serveis exposats",
+            "Revisar els logs diàriament i alertar sobre patrons sospitosos",
+            "Aplicar segmentació de xarxa per limitar el moviment lateral",
+            ]
 
     def get_color(self) -> str:
         return "#FF9800"
@@ -40,7 +49,13 @@ class CriticalRisk(RiskClassifier):
         return RiskLevel.CRITICAL
 
     def get_recommendations(self) -> List[str]:
-        return ["AÏLLAR immediatament en una VLAN segregada"]
+        return [
+            "AÏLLAR immediatament en una VLAN segregada",
+            "Auditoria completa de seguretat i revisió de privilegis",
+            "Desactivar serveis insegurs (Telnet, SMBv1, FTP en clar)",
+            "Desplegar EDR i monitoritzar 24/7",
+            "Forçar rotació de credencials administratives",
+            ]
 
     def get_color(self) -> str:
         return "#F44336"
