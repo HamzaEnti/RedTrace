@@ -1,4 +1,3 @@
-# Aquest fitxer s'ha desenvolupat amb assistència d'IA (Claude).
 """Generadors d'informe (JSON i text) basats en cua d'esdeveniments.
 
 L'estructura interna és una `deque` (cua FIFO) d'esdeveniments més un `dict`
