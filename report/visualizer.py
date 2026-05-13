@@ -1,4 +1,3 @@
-# Aquest fitxer s'ha desenvolupat amb assistència d'IA (Claude).
 """Visualització matplotlib del graf amb la ruta d'atac destacada."""
 
 from pathlib import Path as _PathLib
