@@ -84,6 +84,14 @@ QMainWindow, QWidget {{ background: {COL_BG}; color: {COL_TEXT}; }}
 
 QFrame#header {{ background: {COL_PANEL}; border-bottom: 1px solid {COL_BORDER}; }}
 QFrame#footer {{ background: {COL_PANEL}; border-top: 1px solid {COL_BORDER}; }}
+QFrame#header QLabel {{ background: transparent; }}
+QFrame#footer QLabel {{ background: transparent; }}
+QLabel#sectionTitle {{ background: transparent; }}
+QLabel#fieldLabel {{ background: transparent; }}
+QLabel#tagline {{ background: transparent; }}
+QLabel#statusOk {{ background: transparent; }}
+QLabel#statusErr {{ background: transparent; }}
+QRadioButton {{ background: transparent; }}
 QFrame#sidebar {{ background: {COL_PANEL}; border-radius: 10px; }}
 QFrame#mainPanel {{ background: {COL_PANEL}; border-radius: 10px; }}
 QFrame#separator {{ background: {COL_BORDER}; max-height: 1px; min-height: 1px; }}
