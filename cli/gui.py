@@ -1,4 +1,4 @@
-"""Interfície gràfica de RedTrace amb Qt6 (PySide6).
+﻿"""Interfície gràfica de RedTrace amb Qt6 (PySide6).
 
 Tema fosc amb accent vermell, tabs per a graf/informe/cicles/estadístiques i
 graf de xarxa interactiu via matplotlib (backend QtAgg).
@@ -24,12 +24,17 @@ from PySide6.QtCore import (
     QSequentialAnimationGroup,
     QVariantAnimation,
 )
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
+    QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
     QFileDialog,
+    QFormLayout,
     QFrame,
     QGraphicsOpacityEffect,
     QGridLayout,
@@ -37,11 +42,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
+    QProgressBar,
     QPushButton,
     QRadioButton,
     QScrollArea,
     QSizePolicy,
     QSpacerItem,
+    QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -53,8 +61,9 @@ from engine.graph import TopologyGraph
 from engine.ids_sim import IDSSimulator
 from engine.risk import make_classifier
 from engine.route_strategy import SafestRoute, ShortestRoute
-from engine.types import AnalysisReport, Path as RTPath, RiskLevel
+from engine.types import AnalysisReport, Edge as RTEdge, Node as RTNode, Path as RTPath, RiskLevel
 from scanner.parser import NetworkParser
+from scanner.synthetic import generate_topology, save_topology
 
 
 COL_BG = "#0E0E12"
@@ -84,14 +93,6 @@ QMainWindow, QWidget {{ background: {COL_BG}; color: {COL_TEXT}; }}
 
 QFrame#header {{ background: {COL_PANEL}; border-bottom: 1px solid {COL_BORDER}; }}
 QFrame#footer {{ background: {COL_PANEL}; border-top: 1px solid {COL_BORDER}; }}
-QFrame#header QLabel {{ background: transparent; }}
-QFrame#footer QLabel {{ background: transparent; }}
-QLabel#sectionTitle {{ background: transparent; }}
-QLabel#fieldLabel {{ background: transparent; }}
-QLabel#tagline {{ background: transparent; }}
-QLabel#statusOk {{ background: transparent; }}
-QLabel#statusErr {{ background: transparent; }}
-QRadioButton {{ background: transparent; }}
 QFrame#sidebar {{ background: {COL_PANEL}; border-radius: 10px; }}
 QFrame#mainPanel {{ background: {COL_PANEL}; border-radius: 10px; }}
 QFrame#separator {{ background: {COL_BORDER}; max-height: 1px; min-height: 1px; }}
@@ -306,7 +307,7 @@ class AnimatedBar(QFrame):
 class RedTraceWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("RedTrace · Lateral Movement Simulator")
+        self.setWindowTitle("RedTrace · Lateral Movement Simulator [BETA]")
         self.resize(1340, 880)
         self.setMinimumSize(1100, 720)
         self.setStyleSheet(STYLESHEET)
@@ -418,6 +419,11 @@ class RedTraceWindow(QMainWindow):
         btn_row.addWidget(browse_btn)
         btn_row.addWidget(load_btn, 1)
         v.addLayout(btn_row)
+
+        v.addSpacing(6)
+        synth_btn = QPushButton("Generar topologia sintètica…")
+        synth_btn.clicked.connect(self._on_generate_synthetic)
+        v.addWidget(synth_btn)
 
         v.addSpacing(22)
         v.addWidget(_section_title("ANÀLISI"))
@@ -643,7 +649,10 @@ class RedTraceWindow(QMainWindow):
         QApplication.processEvents()
 
         try:
-            strategy = ShortestRoute() if self.radio_short.isChecked() else SafestRoute()
+            if self.radio_short.isChecked():
+                strategy = ShortestRoute()
+            else:
+                strategy = SafestRoute()
             path = strategy.select(self.graph, entry, target)
             if path is None:
                 self._set_status(f"Sense ruta entre {entry} i {target}", error=True)
@@ -739,7 +748,7 @@ class RedTraceWindow(QMainWindow):
         )
         head_box.addWidget(title)
         sub = QLabel(
-            f"Estratègia: {'shortest' if self.radio_short.isChecked() else 'safest'}   ·   "
+            f"Estratègia: {self._current_strategy_label()}   ·   "
             f"{len(report.path.nodes)} nodes   ·   {report.path.hops} salts   ·   "
             f"pes {report.path.total_weight:.2f}   ·   risc mitjà {report.path.avg_risk:.2f}"
         )
@@ -1019,6 +1028,87 @@ class RedTraceWindow(QMainWindow):
         self.status_label.setStyleSheet(
             f"color: {COL_ACCENT if error else COL_TEXT_DIM};"
             f" font-size: 11px; {'font-weight: 600;' if error else ''}"
+        )
+
+    # ---------------------------------------------------------------
+    # Fase 3 — funcionalitats noves integrades a la GUI
+    # ---------------------------------------------------------------
+
+    def _current_strategy_label(self) -> str:
+        if self.radio_short.isChecked():
+            return "shortest"
+        if self.radio_safe.isChecked():
+            return "safest"
+        return "fewest-hops"
+
+
+    # --- Generador de topologies sintètiques -----------------------
+
+    def _on_generate_synthetic(self) -> None:
+        dlg = _SyntheticDialog(self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        n, density, critical_ratio, seed = dlg.values()
+        try:
+            topo = generate_topology(
+                n_nodes=n, edge_density=density,
+                critical_ratio=critical_ratio, seed=seed,
+            )
+            out_path = _PathLib("data/topology_synthetic.json")
+            save_topology(topo, str(out_path))
+            self.path_input.setText(str(out_path))
+            self._load_topology()
+            self._set_status(
+                f"Topologia generada · N={n} · densitat={density:.2f}"
+            )
+        except Exception as exc:
+            self._set_status(f"Error generant: {exc}", error=True)
+            traceback.print_exc()
+
+
+class _SyntheticDialog(QDialog):
+    """Diàleg per a configurar el generador de topologies sintètiques."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Generar topologia sintètica")
+        self.setModal(True)
+        self.setMinimumWidth(360)
+
+        form = QFormLayout(self)
+        self.n_spin = QSpinBox()
+        self.n_spin.setRange(2, 5000)
+        self.n_spin.setValue(20)
+        form.addRow("Nombre de nodes (V):", self.n_spin)
+
+        self.density_spin = QDoubleSpinBox()
+        self.density_spin.setRange(0.0, 1.0)
+        self.density_spin.setSingleStep(0.05)
+        self.density_spin.setValue(0.20)
+        form.addRow("Densitat d'arestes:", self.density_spin)
+
+        self.critical_spin = QDoubleSpinBox()
+        self.critical_spin.setRange(0.0, 1.0)
+        self.critical_spin.setSingleStep(0.05)
+        self.critical_spin.setValue(0.20)
+        form.addRow("Ratio CRITICAL:", self.critical_spin)
+
+        self.seed_spin = QSpinBox()
+        self.seed_spin.setRange(0, 2**31 - 1)
+        self.seed_spin.setValue(42)
+        form.addRow("Llavor (seed):", self.seed_spin)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        form.addRow(buttons)
+
+    def values(self):
+        return (
+            self.n_spin.value(),
+            self.density_spin.value(),
+            self.critical_spin.value(),
+            self.seed_spin.value(),
         )
 
 

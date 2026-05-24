@@ -1,17 +1,20 @@
 ﻿# 
 
 - Autor: **Gerard**
-- Hora: 15:00
-- Dia: 2026-05-23 (dissabte)
+- Hora: 16:00
+- Dia: 2026-05-24 (diumenge)
 - Branca: `feat/report-cli`
 
 ## Missatge de commit
 
 ```
-feat(benchmarks): scaffold benchmark runner with size sweep skeleton
+feat(benchmarks): complete CSV + log-log plot; gui: add synthetic topology dialog
 ```
 
 ## Fitxers tocats
 
-- `benchmarks/__init__.py`
 - `benchmarks/run.py`
+- `benchmarks/results.csv`
+- `benchmarks/results.png`
+- `benchmarks/summary.md`
+- `cli/gui.py`
