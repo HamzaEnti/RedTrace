@@ -60,7 +60,7 @@ from engine.dfs import CycleDetector
 from engine.graph import TopologyGraph
 from engine.ids_sim import IDSSimulator
 from engine.risk import make_classifier
-from engine.route_strategy import SafestRoute, ShortestRoute
+from engine.route_strategy import FewestHopsRoute, SafestRoute, ShortestRoute
 from engine.types import AnalysisReport, Edge as RTEdge, Node as RTNode, Path as RTPath, RiskLevel
 from scanner.parser import NetworkParser
 from scanner.synthetic import generate_topology, save_topology
@@ -446,11 +446,14 @@ class RedTraceWindow(QMainWindow):
         self.strat_group = QButtonGroup(self)
         self.radio_short = QRadioButton("Camí més curt (Dijkstra)")
         self.radio_safe = QRadioButton("Camí més segur (evita CRITICAL)")
+        self.radio_bfs = QRadioButton("Menys salts (BFS)")
         self.radio_short.setChecked(True)
         self.strat_group.addButton(self.radio_short)
         self.strat_group.addButton(self.radio_safe)
+        self.strat_group.addButton(self.radio_bfs)
         v.addWidget(self.radio_short)
         v.addWidget(self.radio_safe)
+        v.addWidget(self.radio_bfs)
 
         v.addSpacing(20)
         self.run_btn = QPushButton("EXECUTAR ANÀLISI")
@@ -651,8 +654,10 @@ class RedTraceWindow(QMainWindow):
         try:
             if self.radio_short.isChecked():
                 strategy = ShortestRoute()
-            else:
+            elif self.radio_safe.isChecked():
                 strategy = SafestRoute()
+            else:
+                strategy = FewestHopsRoute()
             path = strategy.select(self.graph, entry, target)
             if path is None:
                 self._set_status(f"Sense ruta entre {entry} i {target}", error=True)

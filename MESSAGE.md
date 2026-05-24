@@ -1,20 +1,17 @@
 ﻿# 
 
 - Autor: **Gerard**
-- Hora: 16:00
-- Dia: 2026-05-24 (diumenge)
+- Hora: 17:00
+- Dia: 2026-05-25 (dilluns)
 - Branca: `feat/report-cli`
 
 ## Missatge de commit
 
 ```
-feat(benchmarks): complete CSV + log-log plot; gui: add synthetic topology dialog
+docs(perf): add empirical avg times analysis; gui: add algorithm radio selector
 ```
 
 ## Fitxers tocats
 
-- `benchmarks/run.py`
-- `benchmarks/results.csv`
-- `benchmarks/results.png`
-- `benchmarks/summary.md`
+- `docs/avg_times_analysis.md`
 - `cli/gui.py`
