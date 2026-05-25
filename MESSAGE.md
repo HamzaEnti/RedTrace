@@ -1,17 +1,17 @@
 ﻿# 
 
 - Autor: **Gerard**
-- Hora: 17:00
-- Dia: 2026-05-25 (dilluns)
+- Hora: 18:00
+- Dia: 2026-05-26 (dimarts)
 - Branca: `feat/report-cli`
 
 ## Missatge de commit
 
 ```
-docs(perf): add empirical avg times analysis; gui: add algorithm radio selector
+docs(presentation): scaffold phase 3 slides; gui: add AllPaths tab
 ```
 
 ## Fitxers tocats
 
-- `docs/avg_times_analysis.md`
+- `docs/presentation_phase3.md`
 - `cli/gui.py`

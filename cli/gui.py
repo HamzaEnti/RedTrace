@@ -55,6 +55,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from engine.all_paths import AllPathsFinder
 from engine.decision_tree import DecisionTreeRiskClassifier
 from engine.dfs import CycleDetector
 from engine.graph import TopologyGraph
@@ -483,6 +484,7 @@ class RedTraceWindow(QMainWindow):
         self.tabs.addTab(self._build_report_tab(), "Informe")
         self.tabs.addTab(self._build_cycles_tab(), "Cicles")
         self.tabs.addTab(self._build_stats_tab(), "Estadístiques")
+        self.tabs.addTab(self._build_all_paths_tab(), "Tots els camins")
         v.addWidget(self.tabs)
         return main
 
@@ -1045,6 +1047,163 @@ class RedTraceWindow(QMainWindow):
         if self.radio_safe.isChecked():
             return "safest"
         return "fewest-hops"
+
+    # --- Tab Tots els camins (AllPaths via backtracking) ----------
+
+    def _build_all_paths_tab(self) -> QWidget:
+        wrap = QWidget()
+        v = QVBoxLayout(wrap)
+        v.setContentsMargins(16, 14, 16, 14)
+        v.setSpacing(10)
+
+        # Controls
+        ctl = QHBoxLayout()
+        ctl.setSpacing(10)
+        ctl.addWidget(_field_label("Màx camins"))
+        self.ap_max_paths = QSpinBox()
+        self.ap_max_paths.setRange(1, 5000)
+        self.ap_max_paths.setValue(50)
+        self.ap_max_paths.setFixedWidth(90)
+        ctl.addWidget(self.ap_max_paths)
+
+        ctl.addSpacing(12)
+        ctl.addWidget(_field_label("Profunditat màx"))
+        self.ap_max_depth = QSpinBox()
+        self.ap_max_depth.setRange(2, 100)
+        self.ap_max_depth.setValue(10)
+        self.ap_max_depth.setFixedWidth(90)
+        ctl.addWidget(self.ap_max_depth)
+
+        ctl.addSpacing(12)
+        self.ap_avoid_critical = QCheckBox("Evita CRITICAL")
+        ctl.addWidget(self.ap_avoid_critical)
+
+        ctl.addStretch()
+        self.ap_run_btn = QPushButton("Cercar tots els camins")
+        self.ap_run_btn.setStyleSheet(
+            f"background: {COL_ACCENT}; color: white; border: none;"
+            f" border-radius: 6px; padding: 8px 14px; font-weight: 700;"
+        )
+        self.ap_run_btn.clicked.connect(self._on_run_all_paths)
+        ctl.addWidget(self.ap_run_btn)
+        v.addLayout(ctl)
+
+        # Llista de resultats (scroll)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        self.ap_holder = QWidget()
+        self.ap_layout = QVBoxLayout(self.ap_holder)
+        self.ap_layout.setContentsMargins(8, 8, 8, 8)
+        self.ap_layout.setSpacing(6)
+        self._all_paths_placeholder()
+        scroll.setWidget(self.ap_holder)
+        v.addWidget(scroll, 1)
+
+        return wrap
+
+    def _all_paths_placeholder(self) -> None:
+        self._clear_layout(self.ap_layout)
+        lbl = QLabel(
+            "Carrega una topologia, tria entrada/objectiu i prem\n"
+            "«Cercar tots els camins» per enumerar-los amb backtracking.\n\n"
+            "⚠ Algoritme O(V!) — limita els paràmetres en grafs grans."
+        )
+        lbl.setStyleSheet(f"color: {COL_TEXT_DIM}; font-size: 12px; padding: 40px;")
+        lbl.setAlignment(Qt.AlignCenter)
+        self.ap_layout.addWidget(lbl)
+        self.ap_layout.addStretch()
+
+    def _on_run_all_paths(self) -> None:
+        if self.graph is None:
+            self._set_status("Carrega una topologia primer", error=True)
+            return
+        entry = self.entry_combo.currentText()
+        target = self.target_combo.currentText()
+        if entry == target:
+            self._set_status("Entrada i objectiu han de ser diferents", error=True)
+            return
+
+        self.ap_run_btn.setEnabled(False)
+        self.ap_run_btn.setText("Calculant…")
+        QApplication.processEvents()
+
+        try:
+            blocked = set()
+            if self.ap_avoid_critical.isChecked():
+                blocked = {
+                    n.id for n in self.graph.nodes
+                    if n.risk_level == RiskLevel.CRITICAL
+                    and n.id not in (entry, target)
+                }
+            finder = AllPathsFinder(
+                blocked_nodes=blocked,
+                max_paths=self.ap_max_paths.value(),
+                max_depth=self.ap_max_depth.value(),
+            )
+            paths = finder.find_all(self.graph, entry, target)
+            self._render_all_paths(paths, entry, target)
+        except Exception as exc:
+            self._set_status(f"Error AllPaths: {exc}", error=True)
+            traceback.print_exc()
+        finally:
+            self.ap_run_btn.setEnabled(True)
+            self.ap_run_btn.setText("Cercar tots els camins")
+
+    def _render_all_paths(self, paths, entry: str, target: str) -> None:
+        self._clear_layout(self.ap_layout)
+        if not paths:
+            lbl = QLabel(f"Cap camí entre {entry} i {target}")
+            lbl.setStyleSheet(f"color: {COL_ACCENT}; font-size: 13px; padding: 30px;")
+            lbl.setAlignment(Qt.AlignCenter)
+            self.ap_layout.addWidget(lbl)
+            self.ap_layout.addStretch()
+            return
+
+        header = QLabel(
+            f"{len(paths)} camins trobats · {entry}  ➜  {target}"
+        )
+        header.setStyleSheet(
+            f"color: {COL_TEXT}; font-size: 13px; font-weight: 700; padding-bottom: 6px;"
+        )
+        self.ap_layout.addWidget(header)
+        self.ap_layout.addWidget(_row_sep())
+
+        # Ordena per pes ascendent
+        ranked = sorted(paths, key=lambda p: p.total_weight)
+        for i, p in enumerate(ranked, 1):
+            row = QWidget()
+            cl = QVBoxLayout(row)
+            cl.setContentsMargins(0, 6, 0, 6)
+            cl.setSpacing(2)
+
+            top = QHBoxLayout()
+            idx = QLabel(f"#{i:02d}")
+            idx.setStyleSheet(
+                f"color: {COL_ACCENT}; font-family: Consolas, monospace;"
+                f" font-size: 13px; font-weight: 800; min-width: 38px;"
+            )
+            top.addWidget(idx)
+            stats = QLabel(
+                f"{p.hops} salts   ·   pes {p.total_weight:.2f}   ·   "
+                f"risc mitjà {p.avg_risk:.2f}"
+            )
+            stats.setStyleSheet(f"color: {COL_TEXT_DIM}; font-size: 11px;")
+            top.addWidget(stats)
+            top.addStretch()
+            cl.addLayout(top)
+
+            seq = QLabel("  →  ".join(n.id for n in p.nodes))
+            seq.setStyleSheet(
+                f"color: {COL_TEXT}; font-family: Consolas, monospace;"
+                f" font-size: 11px;"
+            )
+            seq.setWordWrap(True)
+            cl.addWidget(seq)
+
+            self.ap_layout.addWidget(row)
+            if i < len(ranked):
+                self.ap_layout.addWidget(_row_sep())
+        self.ap_layout.addStretch()
 
 
     # --- Generador de topologies sintètiques -----------------------
