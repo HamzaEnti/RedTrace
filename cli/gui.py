@@ -485,6 +485,7 @@ class RedTraceWindow(QMainWindow):
         self.tabs.addTab(self._build_cycles_tab(), "Cicles")
         self.tabs.addTab(self._build_stats_tab(), "Estadístiques")
         self.tabs.addTab(self._build_all_paths_tab(), "Tots els camins")
+        self.tabs.addTab(self._build_benchmarks_tab(), "Benchmarks")
         v.addWidget(self.tabs)
         return main
 
@@ -1205,6 +1206,89 @@ class RedTraceWindow(QMainWindow):
                 self.ap_layout.addWidget(_row_sep())
         self.ap_layout.addStretch()
 
+    # --- Tab Benchmarks --------------------------------------------
+
+    def _build_benchmarks_tab(self) -> QWidget:
+        wrap = QWidget()
+        v = QVBoxLayout(wrap)
+        v.setContentsMargins(16, 14, 16, 14)
+        v.setSpacing(10)
+
+        ctl = QHBoxLayout()
+        self.bench_run_btn = QPushButton("Re-executar benchmark")
+        self.bench_run_btn.setStyleSheet(
+            f"background: {COL_ACCENT_DARK}; color: white; border: none;"
+            f" border-radius: 6px; padding: 8px 14px; font-weight: 700;"
+        )
+        self.bench_run_btn.clicked.connect(self._on_run_benchmark)
+        ctl.addWidget(self.bench_run_btn)
+
+        self.bench_progress = QProgressBar()
+        self.bench_progress.setRange(0, 0)
+        self.bench_progress.setVisible(False)
+        self.bench_progress.setFixedHeight(8)
+        ctl.addWidget(self.bench_progress, 1)
+        v.addLayout(ctl)
+
+        self.bench_status = QLabel("")
+        self.bench_status.setStyleSheet(f"color: {COL_TEXT_DIM}; font-size: 11px;")
+        v.addWidget(self.bench_status)
+
+        # Visor de la imatge
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        holder = QWidget()
+        h = QVBoxLayout(holder)
+        h.setContentsMargins(0, 0, 0, 0)
+        self.bench_image = QLabel()
+        self.bench_image.setAlignment(Qt.AlignCenter)
+        h.addWidget(self.bench_image)
+        scroll.setWidget(holder)
+        v.addWidget(scroll, 1)
+
+        self._refresh_benchmark_image()
+        return wrap
+
+    def _refresh_benchmark_image(self) -> None:
+        png = _PathLib("benchmarks/results.png")
+        if png.is_file():
+            pix = QPixmap(str(png))
+            self.bench_image.setPixmap(pix.scaledToWidth(900, Qt.SmoothTransformation))
+            self.bench_status.setText(f"Imatge: {png.resolve()}")
+        else:
+            self.bench_image.setText(
+                "Encara no hi ha resultats.\n"
+                "Prem «Re-executar benchmark» per generar-los."
+            )
+            self.bench_image.setStyleSheet(
+                f"color: {COL_TEXT_DIM}; font-size: 13px; padding: 60px;"
+            )
+
+    def _on_run_benchmark(self) -> None:
+        import subprocess
+        self.bench_run_btn.setEnabled(False)
+        self.bench_progress.setVisible(True)
+        self.bench_status.setText("Executant… pot trigar uns minuts.")
+        QApplication.processEvents()
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-u", "-m", "benchmarks.run"],
+                capture_output=True, text=True, timeout=900,
+            )
+            if proc.returncode != 0:
+                QMessageBox.warning(
+                    self, "Benchmark fallit",
+                    f"Codi de sortida {proc.returncode}\n\nstderr:\n{proc.stderr[-1000:]}",
+                )
+            self._refresh_benchmark_image()
+            self.bench_status.setText("Benchmark completat ✓")
+        except subprocess.TimeoutExpired:
+            QMessageBox.warning(self, "Timeout", "El benchmark ha excedit 15 minuts.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", str(exc))
+        finally:
+            self.bench_progress.setVisible(False)
+            self.bench_run_btn.setEnabled(True)
 
     # --- Generador de topologies sintètiques -----------------------
 

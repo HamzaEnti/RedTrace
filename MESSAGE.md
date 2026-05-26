@@ -1,17 +1,17 @@
 ﻿# 
 
 - Autor: **Gerard**
-- Hora: 18:00
-- Dia: 2026-05-26 (dimarts)
+- Hora: 19:00
+- Dia: 2026-05-27 (dimecres)
 - Branca: `feat/report-cli`
 
 ## Missatge de commit
 
 ```
-docs(presentation): scaffold phase 3 slides; gui: add AllPaths tab
+docs(readme): bump to v2.0 with full feature list; gui: add Benchmarks tab
 ```
 
 ## Fitxers tocats
 
-- `docs/presentation_phase3.md`
+- `README.md`
 - `cli/gui.py`
