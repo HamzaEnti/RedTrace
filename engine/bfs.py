@@ -6,13 +6,13 @@ from __future__ import annotations
 
 from collections import deque
 from typing import Deque, Dict, List, Optional, Set
-
 from engine.base import AttackPathFinder
 from engine.graph import TopologyGraph
 from engine.types import Edge, Node, Path
 
 
 class BFSFinder(AttackPathFinder):
+"""Ajuda amb ús d'IA: inici"""
     """Troba el camí amb el menor nombre d'arestes (hops). (WIP)"""
 
     def __init__(self, blocked_nodes: Optional[Set[str]] = None):
@@ -26,10 +26,10 @@ class BFSFinder(AttackPathFinder):
         if entry == target:
             n = graph.get_node(entry)
             return Path(nodes=[n], edges=[], total_weight=0.0)
-
         visited: Set[str] = {entry}
         previous: Dict[str, Optional[str]] = {entry: None}
         queue: Deque[str] = deque([entry])
+        """Ajuda amb ús d'IA: fi"""
 
         while queue:
             u = queue.popleft()
@@ -60,10 +60,11 @@ class BFSFinder(AttackPathFinder):
             ids.append(cursor)
             cursor = previous[cursor]
         ids.reverse()
-
+        """Ajuda amb ús d'IA: inici"""
         nodes: List[Node] = [graph.get_node(nid) for nid in ids]  # type: ignore[misc]
         edges: List[Edge] = []
         total = 0.0
+        """Ajuda amb ús d'IA: fi"""
         for u, v in zip(ids, ids[1:]):
             w = graph.edge_weight(u, v) or 0.0
             edges.append(Edge(from_node=u, to_node=v, weight=w))

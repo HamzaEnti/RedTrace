@@ -15,11 +15,13 @@ class CycleDetector:
         self._stack: List[str] = []
         self._cycles: List[List[str]] = []
 
+    """Ajuda amb ús d'IA: inici"""
     def find_cycles(self) -> List[List[str]]:
         self._visited.clear()
         self._on_stack.clear()
         self._stack.clear()
         self._cycles.clear()
+        """Ajuda amb ús d'IA: fi"""
 
         for nid in self.graph.node_ids:
             if nid not in self._visited:
@@ -50,7 +52,7 @@ class CycleDetector:
             if self._normalize(existing) == norm:
                 return True
         return False
-
+    """Ajuda amb ús d'IA: inici"""
     @staticmethod
     def _normalize(cycle: List[str]) -> tuple:
         body = cycle[:-1]
@@ -59,3 +61,4 @@ class CycleDetector:
         min_idx = body.index(min(body))
         rotated = body[min_idx:] + body[:min_idx]
         return tuple(rotated)
+    """Ajuda amb ús d'IA: fi"""

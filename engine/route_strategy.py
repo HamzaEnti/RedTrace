@@ -1,5 +1,5 @@
 """Estratègies polimòrfiques per seleccionar rutes (R3 enunciat)."""
-
+"""Ajuda amb ús d'IA: vaig fer servir informacio del patró strategy a partir d'aquesta web:https://refactoring.guru/design-patterns/strategy/python/example i una mica d'ajuda amb la ia per arribar entendre i com poguer convinar-ho per aquest treball"""
 from typing import Optional, Set
 
 from engine.base import RouteStrategy
