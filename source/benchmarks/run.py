@@ -26,6 +26,9 @@ REPEATS = 3
 ALL_PATHS_CAP = 15
 ALL_PATHS_MAX_PATHS = 50
 ALL_PATHS_MAX_DEPTH = 8
+# El nombre de cicles simples en grafs densos pot ser exponencial.
+# Cap per evitar que el DFS exploti en N=250 o N=500.
+CYCLES_MAX = 500
 
 
 def _log(msg: str) -> None:
@@ -86,7 +89,7 @@ def run() -> List[Dict]:
         row["bfs_mean"], row["bfs_stdev"] = m, s
 
         _log("  - DFS cycles")
-        m, s = _time(lambda: CycleDetector(graph).find_cycles(), REPEATS)
+        m, s = _time(lambda: CycleDetector(graph).find_cycles(max_cycles=CYCLES_MAX), REPEATS)
         row["dfs_cycles_mean"], row["dfs_cycles_stdev"] = m, s
 
         """AllPaths només per grafs petits"""

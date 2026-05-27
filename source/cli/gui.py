@@ -1618,27 +1618,43 @@ class RedTraceWindow(QMainWindow):
 
         self.bench_run_btn.setEnabled(False)
         self.bench_progress.setVisible(True)
-        self.bench_status.setText("Executant… pot trigar uns minuts.")
+        self.bench_status.setText("Iniciant benchmark…")
+        # Buffer per acumular l'output a temps real (es mostrarà a l'error si peta)
+        self._bench_output = ""
 
         proc = QProcess(self)
-        # Unifiquem stdout i stderr per llegir-ho tot junt al final
+        # Unifiquem stdout i stderr per llegir-ho tot junt
         proc.setProcessChannelMode(QProcess.MergedChannels)
+        # Forcem que CWD del subprocés sigui l'arrel del projecte perquè
+        # `-m source.benchmarks.run` resolgui correctament els imports
+        proc.setWorkingDirectory(str(_PathLib(__file__).resolve().parents[2]))
+        proc.readyReadStandardOutput.connect(self._on_benchmark_output)
         proc.finished.connect(self._on_benchmark_finished)
         proc.errorOccurred.connect(self._on_benchmark_error)
         self._bench_proc = proc
         # Executem el benchmark com a mòdul Python (-m) per resoldre els imports
         proc.start(sys.executable, ["-u", "-m", "source.benchmarks.run"])
 
+    def _on_benchmark_output(self) -> None:
+        """Llegeix l'output incremental del benchmark i mostra l'última línia."""
+        proc = self._bench_proc
+        if proc is None:
+            return
+        chunk = bytes(proc.readAllStandardOutput()).decode("utf-8", errors="replace")
+        self._bench_output += chunk
+        # Agafem l'última línia no buida per mostrar-la a l'etiqueta d'estat
+        lines = [ln for ln in chunk.splitlines() if ln.strip()]
+        if lines:
+            self.bench_status.setText(lines[-1][:120])
+
     def _on_benchmark_finished(self, exit_code: int, exit_status) -> None:
         """Handler del signal QProcess.finished: refresca la imatge i alliberem la UI."""
-        proc = self._bench_proc
-        output = ""
-        if proc is not None:
-            output = bytes(proc.readAllStandardOutput()).decode("utf-8", errors="replace")
+        # Drenem qualsevol output que quedi pendent al buffer del procés
+        self._on_benchmark_output()
         if exit_code != 0:
             QMessageBox.warning(
                 self, "Benchmark fallit",
-                f"Codi de sortida {exit_code}\n\nOutput:\n{output[-1000:]}",
+                f"Codi de sortida {exit_code}\n\nOutput:\n{self._bench_output[-1500:]}",
             )
             self.bench_status.setText("Benchmark fallit")
         else:
