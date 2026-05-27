@@ -511,8 +511,6 @@ On V = nodes, E = arestes, k = nombre de camins simples, n = mostres d'entrename
 - AllPathsFinder amb `max_paths=50` és manejable fins a ~30 nodes. Per a grafs mes grans, la poda evita l'explosio factorial.
 - El generador sintètic mostra comportament quadratic clar a partir de n=200, consistent amb l'enumeracio de parells dirigits.
 
-Per a la justificacio formal cas a cas, consulta [`docs/complexity_analysis.md`](docs/complexity_analysis.md).
-
 ---
 
 ## Requisits del Sistema
