@@ -1,4 +1,4 @@
-﻿"""Interfície gràfica de RedTrace amb Qt6 (PySide6).
+"""Interfície gràfica de RedTrace amb Qt6 (PySide6).
 
 Tema fosc amb accent vermell, tabs per a graf/informe/cicles/estadístiques i
 graf de xarxa interactiu via matplotlib (backend QtAgg).
@@ -308,7 +308,7 @@ class AnimatedBar(QFrame):
 class RedTraceWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("RedTrace · Lateral Movement Simulator [BETA]")
+        self.setWindowTitle("RedTrace · Lateral Movement Simulator")
         self.resize(1340, 880)
         self.setMinimumSize(1100, 720)
         self.setStyleSheet(STYLESHEET)

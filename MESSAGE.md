@@ -1,17 +1,17 @@
 ﻿# 
 
 - Autor: **Gerard**
-- Hora: 19:00
-- Dia: 2026-05-27 (dimecres)
-- Branca: `feat/report-cli`
+- Hora: 17:00
+- Dia: 2026-05-28 (dijous)
+- Branca: `feat/report-cli -> develop -> main`
 
 ## Missatge de commit
 
 ```
-docs(readme): bump to v2.0 with full feature list; gui: add Benchmarks tab
+feat(gui): final polish + MERGE develop -> main + tag v2.0
 ```
 
 ## Fitxers tocats
 
-- `README.md`
 - `cli/gui.py`
+- `INSTRUCCIONS.md`
