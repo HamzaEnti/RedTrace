@@ -1,6 +1,0 @@
-docs/
-├── UML_diagrama_classes.png     
-├── DiagramaFlux1.png/pdf        
-├── DiagramaFlux2.png/pdf        
-├── Estudi_complexitat.md/pdf    
-└── Conclusions_propostes.md/pdf
