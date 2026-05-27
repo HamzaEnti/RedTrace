@@ -71,7 +71,7 @@ class CriticalRisk(RiskClassifier):
     def get_color(self) -> str:
         """Retorna el color vermell del risc crític."""
         return "#F44336"
-
+    
 CLASSIFIER_BY_LEVEL: Dict[RiskLevel, Type[RiskClassifier]] = {
     RiskLevel.LOW: LowRisk,
     RiskLevel.MEDIUM: MediumRisk,

@@ -66,6 +66,8 @@ def generate_synthetic_dataset(
     rng = np.random.default_rng(seed)
     rows = []
     labels = ("LOW", "MEDIUM", "CRITICAL")
+
+    """ IA: inici """
     for _ in range(n_rows):
         has_smb = int(rng.random() < 0.40)
         has_rdp = int(rng.random() < 0.30)
@@ -94,12 +96,13 @@ def generate_synthetic_dataset(
                 "label": label,
             }
         )
+    
 
     df = pd.DataFrame(rows)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     return df
-
+    """ IA: fi """
 
 def _extract_features(node: Node) -> List[int]:
     """Extreu el vector de features d'un node a partir dels seus ports i serveis"""
@@ -114,17 +117,21 @@ def _extract_features(node: Node) -> List[int]:
         or 80 in node.ports
         or 443 in node.ports
     )
+    """ IA: inici """
     has_db = int(any(s in DB_SERVICES for s in services))
     return [has_smb, has_rdp, has_telnet, has_ssh, has_http, has_db, len(node.ports)]
+    """ IA: fi """
 
 
 class DecisionTreeRiskClassifier:
     """Embolcalla un DecisionTreeClassifier de scikit-learn per classificar el risc dels nodes"""
 
+    """ IA: inici """
     def __init__(self, dataset_path: _PathLib = DEFAULT_DATASET_PATH):
         self.dataset_path = dataset_path
         self.model = DecisionTreeClassifier(criterion="entropy", random_state=42)
         self._trained: bool = False
+    """ IA: fi """
 
     def ensure_trained(self) -> None:
         """Entrena el model si encara no ho està, generant el dataset si cal"""
