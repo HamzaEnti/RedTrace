@@ -28,6 +28,7 @@ FEATURE_COLS = (
 DEFAULT_DATASET_PATH = _PathLib("data") / "risk_dataset.csv"
 DB_SERVICES = {"mysql", "postgres", "postgresql", "oracle", "mssql", "mongo", "mongodb"}
 
+
 def _label_from_rules(
     has_smb: int,
     has_rdp: int,
@@ -79,6 +80,7 @@ def generate_synthetic_dataset(
         label = _label_from_rules(
             has_smb, has_rdp, has_telnet, has_ssh, has_http, has_db, num_ports
         )
+        # Introdueix soroll aleatori per evitar overfitting perfecte
         if rng.random() < noise_ratio:
             label = str(rng.choice(labels))
 

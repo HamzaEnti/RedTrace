@@ -78,7 +78,7 @@ class IDSSimulator:
                 f"(>= {CRITICAL_CONSECUTIVE_THRESHOLD})",
             )
         return False, ""
-    
+
     @staticmethod
     def _sig_high_avg_risk(path: Path) -> Tuple[bool, str]:
         """Detecta rutes amb un risc mitjà acumulat superior al llindar"""
