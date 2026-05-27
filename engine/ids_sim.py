@@ -8,7 +8,7 @@ from typing import Callable, Dict, Tuple
 
 from engine.types import IDSResult, Path, RiskLevel
 
-# Llindars de detecció de les firmes
+"""Llindars de detecció de les firmes"""
 HOPS_THRESHOLD = 4
 TELNET_PORT = 23
 CRITICAL_CONSECUTIVE_THRESHOLD = 2
@@ -19,6 +19,7 @@ SignatureFn = Callable[[Path], Tuple[bool, str]]
 
 class IDSSimulator:
     """Avalua una ruta contra un conjunt de firmes conegudes"""
+
     def __init__(self):
         self.signatures: Dict[str, SignatureFn] = {
             "long_path": self._sig_long_path,
@@ -58,6 +59,7 @@ class IDSSimulator:
                 return True, f"Node {n.id} amb Telnet (port 23) a la ruta"
         return False, ""
 
+    """ IA: inici """
     @staticmethod
     def _sig_consecutive_critical(path: Path) -> Tuple[bool, str]:
         """Detecta seqüències de nodes CRITICAL consecutius per sobre del llindar"""
@@ -87,3 +89,4 @@ class IDSSimulator:
                 f"(> {HIGH_AVG_RISK_THRESHOLD:.2f})",
             )
         return False, ""
+    """ IA: fi """
