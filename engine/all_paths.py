@@ -59,7 +59,6 @@ class AllPathsFinder:
         self._backtrack(graph, entry, target, current_ids, visited, results)
         return results
 
-#Començament d'assistencia amb IA
     def _backtrack(
         self,
         graph: TopologyGraph,
@@ -96,8 +95,8 @@ class AllPathsFinder:
             # Desfà l'estat (backtracking): elimina v per explorar altres branques
             current_ids.pop()
             visited.remove(v)
-#Fi assistencia de IA
 
+    #Assistència IA
     @staticmethod
     def _materialize(graph: TopologyGraph, ids: List[str]) -> Path:
         # Recupera els objectes Node complets a partir dels identificadors del camí
@@ -113,3 +112,26 @@ class AllPathsFinder:
             total += w
 
         return Path(nodes=nodes, edges=edges, total_weight=total)
+    #Fi Assistència IA
+
+    def find_best(
+        self,
+        graph: TopologyGraph,
+        entry: str,
+        target: str,
+        key=lambda p: p.total_weight,
+    ) -> Optional[Path]:
+        """Retorna el camí òptim segons una funció de cost arbitrària.
+
+        Útil per analitzar criteris no suportats per Dijkstra (p. ex.
+        minimitzar risc màxim del camí, no la suma).
+        """
+        # Obté tots els camins possibles entre entry i target
+        paths = self.find_all(graph, entry, target)
+
+        # Si no existeix cap camí, retorna None
+        if not paths:
+            return None
+
+        # Retorna el camí amb menor valor segons la funció de cost passada per paràmetre
+        return min(paths, key=key)
