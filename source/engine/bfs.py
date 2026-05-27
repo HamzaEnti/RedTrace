@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from collections import deque
 from typing import Deque, Dict, List, Optional, Set
-from engine.base import AttackPathFinder
-from engine.graph import TopologyGraph
-from engine.types import Edge, Node, Path
+from source.engine.base import AttackPathFinder
+from source.engine.graph import TopologyGraph
+from source.engine.types import Edge, Node, Path
 
 
 class BFSFinder(AttackPathFinder):

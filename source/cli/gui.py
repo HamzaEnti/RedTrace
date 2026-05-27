@@ -62,16 +62,16 @@ from PySide6.QtWidgets import (
 )
 
 # Importem el motor intern de RedTrace
-from engine.all_paths import AllPathsFinder
-from engine.decision_tree import DecisionTreeRiskClassifier
-from engine.dfs import CycleDetector
-from engine.graph import TopologyGraph
-from engine.ids_sim import IDSSimulator
-from engine.risk import make_classifier
-from engine.route_strategy import FewestHopsRoute, SafestRoute, ShortestRoute
-from engine.types import AnalysisReport, Edge as RTEdge, Node as RTNode, Path as RTPath, RiskLevel
-from scanner.parser import NetworkParser
-from scanner.synthetic import generate_topology, save_topology
+from source.engine.all_paths import AllPathsFinder
+from source.engine.decision_tree import DecisionTreeRiskClassifier
+from source.engine.dfs import CycleDetector
+from source.engine.graph import TopologyGraph
+from source.engine.ids_sim import IDSSimulator
+from source.engine.risk import make_classifier
+from source.engine.route_strategy import FewestHopsRoute, SafestRoute, ShortestRoute
+from source.engine.types import AnalysisReport, Edge as RTEdge, Node as RTNode, Path as RTPath, RiskLevel
+from source.scanner.parser import NetworkParser
+from source.scanner.synthetic import generate_topology, save_topology
 
 
 # Paleta de colors del tema fosc amb accent vermell

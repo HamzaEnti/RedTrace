@@ -2,9 +2,9 @@
 
 import pytest
 
-from engine.all_paths import AllPathsFinder
-from engine.graph import TopologyGraph
-from engine.types import Edge, Node
+from source.engine.all_paths import AllPathsFinder
+from source.engine.graph import TopologyGraph
+from source.engine.types import Edge, Node
 
 
 def _g(nodes, edges):

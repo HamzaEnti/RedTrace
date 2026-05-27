@@ -4,8 +4,8 @@ import json
 from pathlib import Path as _PathLib
 from typing import Dict, List, Tuple
 
-from engine.types import Edge, Node
-from scanner.normalizer import normalize
+from source.engine.types import Edge, Node
+from source.scanner.normalizer import normalize
 
 
 class NetworkParser:

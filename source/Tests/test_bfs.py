@@ -4,9 +4,9 @@ Tests per a BFSFinder.
 
 import pytest
 
-from engine.bfs import BFSFinder
-from engine.graph import TopologyGraph
-from engine.types import Edge, Node
+from source.engine.bfs import BFSFinder
+from source.engine.graph import TopologyGraph
+from source.engine.types import Edge, Node
 
 """Ajuda amb ús d'IA: inici"""
 def _g(nodes, edges):

@@ -4,14 +4,14 @@ import argparse
 import sys
 from pathlib import Path as _PathLib
 
-from engine.decision_tree import DecisionTreeRiskClassifier
-from engine.dfs import CycleDetector
-from engine.graph import TopologyGraph
-from engine.ids_sim import IDSSimulator
-from engine.route_strategy import SafestRoute, ShortestRoute
-from engine.types import AnalysisReport
-from report.generator import JSONReport, TextReport
-from scanner.parser import NetworkParser
+from source.engine.decision_tree import DecisionTreeRiskClassifier
+from source.engine.dfs import CycleDetector
+from source.engine.graph import TopologyGraph
+from source.engine.ids_sim import IDSSimulator
+from source.engine.route_strategy import SafestRoute, ShortestRoute
+from source.engine.types import AnalysisReport
+from source.report.generator import JSONReport, TextReport
+from source.scanner.parser import NetworkParser
 
 
 def _parse_args(argv=None) -> argparse.Namespace:
@@ -102,7 +102,7 @@ def run(argv=None) -> int:
 
     # La generació de la imatge PNG és opcional perquè pot trigar en grafs grans
     if not args.no_plot:
-        from report.visualizer import TopologyVisualizer
+        from source.report.visualizer import TopologyVisualizer
         TopologyVisualizer(graph).plot(
             path, str(out_dir / "topology.png"), title=f"RedTrace · {entry} -> {target}"
         )

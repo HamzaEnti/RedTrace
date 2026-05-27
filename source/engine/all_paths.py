@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from typing import List, Optional, Set
 
-from engine.graph import TopologyGraph
-from engine.types import Edge, Node, Path
+from source.engine.graph import TopologyGraph
+from source.engine.types import Edge, Node, Path
 
 
 class AllPathsFinder:

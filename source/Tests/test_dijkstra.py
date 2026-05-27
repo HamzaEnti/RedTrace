@@ -1,8 +1,8 @@
 """Tests per al Dijkstra modificat (camí mínim ponderat)."""
 
-from engine.dijkstra import DijkstraFinder
-from engine.graph import TopologyGraph
-from engine.types import Edge, Node
+from source.engine.dijkstra import DijkstraFinder
+from source.engine.graph import TopologyGraph
+from source.engine.types import Edge, Node
 
 
 def _node(nid: str, risk: float = 0.5) -> Node:

@@ -3,7 +3,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 """ TYPE_CHECKING és False en temps d'execució, les importacions aquí són només per anàlisi estàtic (evita imports circulars)"""
 if TYPE_CHECKING:
-    from engine.types import AnalysisReport, IDSResult, Node, Path, RiskLevel
+    from source.engine.types import AnalysisReport, IDSResult, Node, Path, RiskLevel
 
 
 class AttackPathFinder(ABC):

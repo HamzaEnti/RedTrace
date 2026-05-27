@@ -6,8 +6,8 @@ decisió a decision_tree.py; aquestes classes només encapsulen la resposta
 
 from typing import Dict, List, Type
 
-from engine.base import RiskClassifier
-from engine.types import RiskLevel
+from source.engine.base import RiskClassifier
+from source.engine.types import RiskLevel
 
 
 class LowRisk(RiskClassifier):

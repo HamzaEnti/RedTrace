@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 
-from engine.base import RiskClassifier
-from engine.risk import make_classifier
-from engine.types import Node, RiskLevel
+from source.engine.base import RiskClassifier
+from source.engine.risk import make_classifier
+from source.engine.types import Node, RiskLevel
 
 """Columnes de features que s'utilitzen per entrenar i predir"""
 FEATURE_COLS = (

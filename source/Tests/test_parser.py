@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from scanner.normalizer import TopologyValidationError, normalize
-from scanner.parser import NetworkParser
+from source.scanner.normalizer import TopologyValidationError, normalize
+from source.scanner.parser import NetworkParser
 
 MOCK_TOPOLOGY = Path("data") / "topology_mock.json"
 

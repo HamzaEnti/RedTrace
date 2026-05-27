@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Set
 
-from engine.graph import TopologyGraph
+from source.engine.graph import TopologyGraph
 
 
 class CycleDetector:

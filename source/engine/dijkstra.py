@@ -9,9 +9,9 @@ decrease-key i és l'aproximació recomanada en Python.
 import heapq
 from typing import Dict, List, Optional, Set
 
-from engine.base import AttackPathFinder
-from engine.graph import TopologyGraph
-from engine.types import Edge, Node, Path
+from source.engine.base import AttackPathFinder
+from source.engine.graph import TopologyGraph
+from source.engine.types import Edge, Node, Path
 
 
 class DijkstraFinder(AttackPathFinder):

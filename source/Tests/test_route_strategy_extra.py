@@ -4,9 +4,9 @@ Tests addicionals per a les estratègies de ruta (Shortest, Safest, FewestHops)
 
 import pytest
 
-from engine.graph import TopologyGraph
-from engine.route_strategy import FewestHopsRoute, SafestRoute, ShortestRoute
-from engine.types import Edge, Node, RiskLevel
+from source.engine.graph import TopologyGraph
+from source.engine.route_strategy import FewestHopsRoute, SafestRoute, ShortestRoute
+from source.engine.types import Edge, Node, RiskLevel
 
 """Ajuda amb ús d'IA: inici"""
 def _node(nid: str, risk: float = 0.1) -> Node:

@@ -6,7 +6,7 @@ funció que avalua una Path
 
 from typing import Callable, Dict, Tuple
 
-from engine.types import IDSResult, Path, RiskLevel
+from source.engine.types import IDSResult, Path, RiskLevel
 
 """Llindars de detecció de les firmes"""
 HOPS_THRESHOLD = 4

@@ -2,8 +2,8 @@
 
 import pytest
 
-from scanner.normalizer import normalize
-from scanner.synthetic import generate_topology
+from source.scanner.normalizer import normalize
+from source.scanner.synthetic import generate_topology
 
 
 def test_basic_sizes():

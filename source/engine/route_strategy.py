@@ -2,11 +2,11 @@
 """Ajuda amb ús d'IA: vaig fer servir informacio del patró strategy a partir d'aquesta web:https://refactoring.guru/design-patterns/strategy/python/example i una mica d'ajuda amb la ia per arribar entendre i com poguer convinar-ho per aquest treball"""
 from typing import Optional, Set
 
-from engine.base import RouteStrategy
-from engine.bfs import BFSFinder
-from engine.dijkstra import DijkstraFinder
-from engine.graph import TopologyGraph
-from engine.types import Path
+from source.engine.base import RouteStrategy
+from source.engine.bfs import BFSFinder
+from source.engine.dijkstra import DijkstraFinder
+from source.engine.graph import TopologyGraph
+from source.engine.types import Path
 
 
 CRITICAL_RISK_THRESHOLD = 0.80

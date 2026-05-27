@@ -4,7 +4,7 @@ from typing import Dict, Iterable, List, Optional
 
 import networkx as nx
 
-from engine.types import Edge, Node
+from source.engine.types import Edge, Node
 
 
 class TopologyGraph:
