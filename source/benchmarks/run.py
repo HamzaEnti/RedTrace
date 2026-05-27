@@ -10,14 +10,14 @@ from typing import Callable, Dict, List
 
 import matplotlib.pyplot as plt
 
-from engine.all_paths import AllPathsFinder
-from engine.bfs import BFSFinder
-from engine.dfs import CycleDetector
-from engine.dijkstra import DijkstraFinder
-from engine.graph import TopologyGraph
-from engine.route_strategy import SafestRoute
-from engine.types import Edge, Node
-from scanner.synthetic import generate_topology
+from source.engine.all_paths import AllPathsFinder
+from source.engine.bfs import BFSFinder
+from source.engine.dfs import CycleDetector
+from source.engine.dijkstra import DijkstraFinder
+from source.engine.graph import TopologyGraph
+from source.engine.route_strategy import SafestRoute
+from source.engine.types import Edge, Node
+from source.scanner.synthetic import generate_topology
 
 
 """Mides de graf i paràmetres globals del benchmark"""
@@ -190,9 +190,9 @@ def main() -> None:
     """Punt d'entrada: executa benchmarks i escriu CSV, PNG i resum"""
     _log(f"[bench] sizes={SIZES} repeats={REPEATS}")
     results = run()
-    write_csv(results, "benchmarks/results.csv")
-    plot(results, "benchmarks/results.png")
-    write_summary(results, "benchmarks/summary.md")
+    write_csv(results, "source/benchmarks/results.csv")
+    plot(results, "source/benchmarks/results.png")
+    write_summary(results, "source/benchmarks/summary.md")
     _log("[bench] done.")
 
 

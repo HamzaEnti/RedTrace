@@ -26,6 +26,7 @@ from matplotlib.figure import Figure
 from PySide6.QtCore import (
     Qt,
     QEasingCurve,
+    QProcess,
     QPropertyAnimation,
     QSequentialAnimationGroup,
     QVariantAnimation,
@@ -1585,7 +1586,7 @@ class RedTraceWindow(QMainWindow):
 
     def _refresh_benchmark_image(self) -> None:
         """Carrega i mostra la imatge PNG del benchmark si existeix al disc."""
-        png = _PathLib("benchmarks/results.png")
+        png = _PathLib("source/benchmarks/results.png")
         if png.is_file():
             pix = QPixmap(str(png))
             # Escalem a 900px d'amplada mantenint la proporció (SmoothTransformation)
@@ -1602,41 +1603,58 @@ class RedTraceWindow(QMainWindow):
             )
 
     def _on_run_benchmark(self) -> None:
-        """Llança el mòdul de benchmark com a subprocés i refresca la imatge.
+        """Llança el mòdul de benchmark de forma asíncrona amb QProcess.
 
-        Usem subprocess.run (bloquejant) perquè el benchmark pot trigar
-        varis minuts. Durant l'execució activem la barra de progrés.
-
-        NOTA: en producció seria millor usar QProcess (no bloqueja la UI),
-        però per a un prototip acadèmic subprocess és suficient.
+        A diferència de subprocess.run, QProcess no bloqueja l'event loop
+        de Qt: la GUI continua responent mentre el benchmark s'executa en
+        segon pla. Quan el procés acaba (signal `finished`) o falla
+        (signal `errorOccurred`), els handlers _on_benchmark_finished /
+        _on_benchmark_error reactiven el botó i refresquen la imatge.
         """
-        import subprocess
+        # Si ja n'hi ha un en marxa, no en llancem un altre
+        existing = getattr(self, "_bench_proc", None)
+        if existing is not None and existing.state() != QProcess.NotRunning:
+            return
+
         self.bench_run_btn.setEnabled(False)
         self.bench_progress.setVisible(True)
         self.bench_status.setText("Executant… pot trigar uns minuts.")
-        QApplication.processEvents()  # mostrem els canvis a la UI abans de bloquejar
 
-        try:
-            # Executem el benchmark com a mòdul Python (-m) per respectar el PYTHONPATH
-            proc = subprocess.run(
-                [sys.executable, "-u", "-m", "benchmarks.run"],
-                capture_output=True, text=True, timeout=900,  # 15 minuts màxim
+        proc = QProcess(self)
+        # Unifiquem stdout i stderr per llegir-ho tot junt al final
+        proc.setProcessChannelMode(QProcess.MergedChannels)
+        proc.finished.connect(self._on_benchmark_finished)
+        proc.errorOccurred.connect(self._on_benchmark_error)
+        self._bench_proc = proc
+        # Executem el benchmark com a mòdul Python (-m) per resoldre els imports
+        proc.start(sys.executable, ["-u", "-m", "source.benchmarks.run"])
+
+    def _on_benchmark_finished(self, exit_code: int, exit_status) -> None:
+        """Handler del signal QProcess.finished: refresca la imatge i alliberem la UI."""
+        proc = self._bench_proc
+        output = ""
+        if proc is not None:
+            output = bytes(proc.readAllStandardOutput()).decode("utf-8", errors="replace")
+        if exit_code != 0:
+            QMessageBox.warning(
+                self, "Benchmark fallit",
+                f"Codi de sortida {exit_code}\n\nOutput:\n{output[-1000:]}",
             )
-            if proc.returncode != 0:
-                QMessageBox.warning(
-                    self, "Benchmark fallit",
-                    f"Codi de sortida {proc.returncode}\n\nstderr:\n{proc.stderr[-1000:]}",
-                )
-            # Tant si ha tingut èxit com si no, intentem mostrar la imatge
-            self._refresh_benchmark_image()
+            self.bench_status.setText("Benchmark fallit")
+        else:
             self.bench_status.setText("Benchmark completat")
-        except subprocess.TimeoutExpired:
-            QMessageBox.warning(self, "Timeout", "El benchmark ha excedit 15 minuts.")
-        except Exception as exc:
-            QMessageBox.critical(self, "Error", str(exc))
-        finally:
-            self.bench_progress.setVisible(False)
-            self.bench_run_btn.setEnabled(True)
+        self._refresh_benchmark_image()
+        self.bench_progress.setVisible(False)
+        self.bench_run_btn.setEnabled(True)
+        self._bench_proc = None
+
+    def _on_benchmark_error(self, error) -> None:
+        """Handler del signal QProcess.errorOccurred: notifica i restaura la UI."""
+        QMessageBox.critical(self, "Error", f"QProcess error: {error}")
+        self.bench_status.setText("Error en llançar el benchmark")
+        self.bench_progress.setVisible(False)
+        self.bench_run_btn.setEnabled(True)
+        self._bench_proc = None
 
     # Generador de topologies sintètiques
     def _on_generate_synthetic(self) -> None:
