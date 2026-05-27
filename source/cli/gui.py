@@ -406,19 +406,6 @@ class AnimatedBar(QFrame):
 
 # Finestra principal de l'aplicació
 class RedTraceWindow(QMainWindow):
-    """Finestra principal de RedTrace.
-
-    Estructura de la UI:
-      ┌─────────── Header ────────────┐
-      │ Sidebar  │  Panell principal  │
-      │ (controls│  (tabs: Graf /     │
-      │  càrrega │   Informe /        │
-      │  anàlisi)│   Cicles /         │
-      │          │   Estadístiques /  │
-      │          │   AllPaths /       │
-      │          │   Benchmarks)      │
-      └─────────── Footer ────────────┘
-    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -1430,7 +1417,7 @@ class RedTraceWindow(QMainWindow):
         lbl = QLabel(
             "Carrega una topologia, tria entrada/objectiu i prem\n"
             "«Cercar tots els camins» per enumerar-los amb backtracking.\n\n"
-            "⚠ Algoritme O(V!) — limita els paràmetres en grafs grans."
+            "Algoritme O(V!) limita els paràmetres en grafs grans."
         )
         lbl.setStyleSheet(f"color: {COL_TEXT_DIM}; font-size: 12px; padding: 40px;")
         lbl.setAlignment(Qt.AlignCenter)
@@ -1642,7 +1629,7 @@ class RedTraceWindow(QMainWindow):
                 )
             # Tant si ha tingut èxit com si no, intentem mostrar la imatge
             self._refresh_benchmark_image()
-            self.bench_status.setText("Benchmark completat ✓")
+            self.bench_status.setText("Benchmark completat")
         except subprocess.TimeoutExpired:
             QMessageBox.warning(self, "Timeout", "El benchmark ha excedit 15 minuts.")
         except Exception as exc:

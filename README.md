@@ -60,16 +60,17 @@ A diferència d'eines CLI tradicionals, RedTrace ofereix múltiples estratègies
 
 | Modul | Fitxers | Descripcio | Fase |
 |-------|---------|------------|------|
-| Motor d'algorismes | `engine/dijkstra.py`, `bfs.py`, `dfs.py`, `all_paths.py` | Dijkstra, BFS, DFS, backtracking, A* | Fase 1–3 |
-| Estratègies de ruta | `engine/route_strategy.py` | ShortestRoute, SafestRoute, FewestHopsRoute | Fase 1–3 |
-| Classificador de risc | `engine/decision_tree.py` | Arbre de decisió ID3 per nivell LOW/MEDIUM/CRITICAL | Fase 2 |
-| Simulador IDS | `engine/ids_sim.py` | Taula hash de firmes, detecció de patrons d'atac | Fase 2 |
-| Generador sintètic | `scanner/synthetic.py` | Topologies de N nodes amb densitat i risc configurables | Fase 3 |
-| Parser ShadowScan | `scanner/parser.py`, `normalizer.py` | Ingesta del `topology.json` exportat per ShadowScan | Fase 1 |
-| Informes | `report/generator.py` | Exportació JSON + text pla amb recomanacions per node | Fase 2 |
-| Visualitzacio | `report/visualizer.py` | Graf amb matplotlib, codificació de colors per risc | Fase 2 |
-| GUI interactiva | `cli/gui.py` | Pestanyes per algorisme, selector d'estratègia, visualitzacio | Fase 2–3 |
-| Benchmarks | `benchmarks/run.py` | Temps d'execucio comparats, CSV + gràfic PNG | Fase 3 |
+| Motor d'algorismes | `source/engine/dijkstra.py`, `bfs.py`, `dfs.py`, `all_paths.py` | Dijkstra, BFS, DFS, backtracking, A* | Fase 1–3 |
+| Estratègies de ruta | `source/engine/route_strategy.py` | ShortestRoute, SafestRoute, FewestHopsRoute | Fase 1–3 |
+| Classificador de risc | `source/engine/decision_tree.py` | Arbre de decisió ID3 per nivell LOW/MEDIUM/CRITICAL | Fase 2 |
+| Simulador IDS | `source/engine/ids_sim.py` | Taula hash de firmes, detecció de patrons d'atac | Fase 2 |
+| Generador sintètic | `source/scanner/synthetic.py` | Topologies de N nodes amb densitat i risc configurables | Fase 3 |
+| Parser ShadowScan | `source/scanner/parser.py`, `normalizer.py` | Ingesta del `topology.json` exportat per ShadowScan | Fase 1 |
+| Informes | `source/report/generator.py` | Exportació JSON + text pla amb recomanacions per node | Fase 2 |
+| Visualitzacio | `source/report/visualizer.py` | Graf amb matplotlib, codificació de colors per risc | Fase 2 |
+| CLI | `source/cli/main.py` | Punt d'entrada `python -m source.cli.main` | Fase 1–2 |
+| GUI interactiva | `source/cli/gui.py` | Pestanyes per algorisme, selector d'estratègia, visualitzacio | Fase 2–3 |
+| Benchmarks | `source/benchmarks/run.py` | Temps d'execucio comparats, CSV + gràfic PNG | Fase 3 |
 
 ### Motor d'Algorismes
 
@@ -267,7 +268,7 @@ Pes total: 1.15  |  Salts: 3  |  Risc mitja: 0.625
 
 ## Arquitectura i Disseny OOP
 
-RedTrace implementa una arquitectura per capes amb abstraccions en cada nivell. Les classes base de `engine/base.py` defineixen els contractes que totes les implementacions concretes han de respectar, garantint polimorfisme complet i adherència al principi Open/Closed.
+RedTrace implementa una arquitectura per capes amb abstraccions en cada nivell. Les classes base de `source/engine/base.py` defineixen els contractes que totes les implementacions concretes han de respectar, garantint polimorfisme complet i adherència al principi Open/Closed.
 
 ### Diagrama de Capes
 
@@ -321,7 +322,7 @@ RedTrace implementa una arquitectura per capes amb abstraccions en cada nivell. 
 
 **Encapsulament** — `TopologyGraph` embolcalla `nx.DiGraph` i n'amaga la implementacio interna. El codi client mai accedeix directament al graf de networkx; ho fa sempre a través de l'API pública (`neighbors`, `edge_weight`, `get_node`).
 
-**Abstraccio** — `engine/base.py` defineix quatre ABCs. Les capes superiors (scanner, report, cli) depenen únicament d'aquestes interfícies, mai de les implementacions concretes.
+**Abstraccio** — `source/engine/base.py` defineix quatre ABCs. Les capes superiors (scanner, report, cli) depenen únicament d'aquestes interfícies, mai de les implementacions concretes.
 
 **Dataclasses** — `Node`, `Edge`, `Path`, `IDSResult` i `AnalysisReport` son `@dataclass`, amb comparacio estructural, `__repr__` automatic i validacio de tipus en static analysis.
 
@@ -329,7 +330,7 @@ RedTrace implementa una arquitectura per capes amb abstraccions en cada nivell. 
 
 ## Detalls Tecnics — Codi
 
-### ABCs Base (`engine/base.py`)
+### ABCs Base (`source/engine/base.py`)
 
 ```python
 from abc import ABC, abstractmethod
@@ -354,7 +355,7 @@ class RiskClassifier(ABC):
     def get_recommendations(self) -> List[str]: ...
 ```
 
-### Dijkstra amb min-heap (`engine/dijkstra.py`)
+### Dijkstra amb min-heap (`source/engine/dijkstra.py`)
 
 ```python
 class DijkstraFinder(AttackPathFinder):
@@ -384,7 +385,7 @@ class DijkstraFinder(AttackPathFinder):
         return self._reconstruct(graph, previous, distances, entry, target)
 ```
 
-### BFS amb deque (`engine/bfs.py`)
+### BFS amb deque (`source/engine/bfs.py`)
 
 ```python
 class BFSFinder(AttackPathFinder):
@@ -405,7 +406,7 @@ class BFSFinder(AttackPathFinder):
         return None
 ```
 
-### Backtracking recursiu (`engine/all_paths.py`)
+### Backtracking recursiu (`source/engine/all_paths.py`)
 
 ```python
 class AllPathsFinder:
@@ -427,7 +428,7 @@ class AllPathsFinder:
 
 El mètode `find_best()` permet aplicar qualsevol funció de cost arbitrària sobre tots els camins trobats, per exemple minimitzar el risc màxim del camí en lloc de la suma — un criteri que Dijkstra no suporta directament.
 
-### Estratègies de Ruta (`engine/route_strategy.py`)
+### Estratègies de Ruta (`source/engine/route_strategy.py`)
 
 ```python
 class ShortestRoute(RouteStrategy):
@@ -448,7 +449,7 @@ class FewestHopsRoute(RouteStrategy):
         return BFSFinder(blocked_nodes=self.blocked).find_path(graph, entry, target)
 ```
 
-### Classificador de Risc ID3 (`engine/decision_tree.py`)
+### Classificador de Risc ID3 (`source/engine/decision_tree.py`)
 
 ```python
 FEATURE_COLS = ("has_smb", "has_rdp", "has_telnet", "has_ssh",
@@ -568,160 +569,166 @@ pip install -r requirements.txt
 ### 4. Verificar la instal·lacio
 
 ```bash
-pytest Tests/ -v
+pytest source/Tests/ -v
 ```
 
 Sortida esperada:
 
 ```
-Tests/test_all_paths.py::test_finds_all_paths                PASSED
-Tests/test_all_paths.py::test_max_paths_limit                PASSED
-Tests/test_bfs.py::test_fewest_hops                          PASSED
-Tests/test_bfs.py::test_avoid_critical_nodes                 PASSED
-Tests/test_dijkstra.py::test_shortest_path                   PASSED
-Tests/test_dijkstra.py::test_blocked_nodes                   PASSED
-Tests/test_parser.py::test_load_topology                     PASSED
-Tests/test_route_strategy_extra.py::test_safest_route        PASSED
-Tests/test_synthetic.py::test_generate_topology              PASSED
-Tests/test_synthetic.py::test_edge_density                   PASSED
+source/Tests/test_all_paths.py::test_finds_all_paths                PASSED
+source/Tests/test_all_paths.py::test_max_paths_limit                PASSED
+source/Tests/test_bfs.py::test_fewest_hops                          PASSED
+source/Tests/test_bfs.py::test_avoid_critical_nodes                 PASSED
+source/Tests/test_dijkstra.py::test_shortest_path                   PASSED
+source/Tests/test_dijkstra.py::test_blocked_nodes                   PASSED
+source/Tests/test_parser.py::test_load_topology                     PASSED
+source/Tests/test_route_strategy_extra.py::test_safest_route        PASSED
+source/Tests/test_synthetic.py::test_generate_topology              PASSED
+source/Tests/test_synthetic.py::test_edge_density                   PASSED
 ```
 
 ---
 
 ## Instruccions d'Execucio
 
+> **IMPORTANT**: Tots els comandos s'executen des de l'arrel del projecte (la carpeta `RedTrace/` que conté `source/`). Cal usar la sintaxi `python -m source.<paquet>.<modul>` perquè Python afegeixi l'arrel al `sys.path` i pugui resoldre els imports absoluts (`from source.xxx import yyy`). Executar els fitxers directament (`python source/cli/main.py`) fallaria amb `ModuleNotFoundError`.
+
 ### Mode GUI (recomanat)
 
 ```bash
-python cli/gui.py
+python -m source.cli.gui
 ```
 
-La GUI ofereix pestanyes independents per a cada algorisme (Dijkstra, BFS, A\*, AllPaths, Benchmarks), selector d'estratègia de ruta via radio buttons, visualitzacio del graf amb codificacio de colors per risc i boto d'exportacio d'informes.
+La GUI ofereix pestanyes independents per al graf, informe, cicles, estadístiques, tots els camins i benchmarks, amb selector d'estratègia de ruta via radio buttons (Dijkstra / Safest / BFS), visualitzacio del graf amb codificacio de colors per risc i generacio sintètica de topologies des de la pròpia interfície.
 
 ### Mode CLI amb topologia de ShadowScan
 
 Exporta primer la topologia des de ShadowScan (boto **"Exportar RedTrace"** al panell Discovery), despres:
 
 ```bash
-python -m redtrace --input topology.json --entry 192.168.1.1 --target 192.168.1.100 --strategy shortest
+python -m source.cli.main --topology topology.json --entry 192.168.1.1 --target 192.168.1.100 --strategy shortest
 ```
 
-### Mode CLI amb topologia sintetica
+### Mode CLI amb la topologia de mostra
+
+Per fer una prova ràpida amb la topologia inclosa al repositori:
 
 ```bash
-python -m redtrace --synthetic --nodes 20 --density 0.3 --critical-ratio 0.2 --strategy safest
+python -m source.cli.main --topology source/data/topology_mock.json --strategy safest
 ```
 
 ### Taula de parametres
 
 | Parametre | Valors possibles | Valor per defecte | Descripcio |
 |-----------|-----------------|-------------------|------------|
-| `--input` | Path `.json` | — | Topologia exportada per ShadowScan |
-| `--strategy` | `shortest`, `safest`, `fewest-hops` | `shortest` | Estrategia de ruta |
+| `--topology` | Path `.json` | **obligatori** | Topologia exportada per ShadowScan o sintetica |
+| `--strategy` | `shortest`, `safest` | `shortest` | Estrategia de ruta |
 | `--entry` | IP o ID de node | `entry_point` del JSON | Node d'entrada de l'atacant |
 | `--target` | IP o ID de node | `target` del JSON | Node objectiu |
-| `--all-paths` | — | Desactivat | Activa backtracking per llistar tots els camins |
-| `--max-paths` | Enter positiu | 100 | Limit de camins per a `--all-paths` |
-| `--synthetic` | — | Desactivat | Genera topologia sintetica |
-| `--nodes` | Enter positiu | 10 | Nombre de nodes (mode sintetic) |
-| `--density` | 0.0 – 1.0 | 0.25 | Densitat d'arestes (mode sintetic) |
-| `--critical-ratio` | 0.0 – 1.0 | 0.20 | Ratio de nodes critics (mode sintetic) |
-| `--output` | Path | `out/` | Directori de sortida dels informes |
+| `--report-dir` | Path | `out` | Directori de sortida dels informes |
+| `--no-plot` | — | Desactivat | Desactiva la generacio del PNG del graf |
+
+> La generacio de topologies sintetiques i la llista de tots els camins (backtracking) estan disponibles des de la **GUI** (pestanyes "Tots els camins" i botó "Generar topologia sintètica…"). El motor (`source/scanner/synthetic.py`, `source/engine/all_paths.py`) també es pot invocar programàticament.
 
 ### Executar els tests
 
 ```bash
 # Tots els tests
-pytest Tests/ -v
+pytest source/Tests/ -v
 
 # Un fitxer concret
-pytest Tests/test_bfs.py -v
+pytest source/Tests/test_bfs.py -v
 
 # Amb cobertura
-pytest Tests/ --cov=engine --cov-report=term-missing
+pytest source/Tests/ --cov=source.engine --cov-report=term-missing
 ```
 
 ### Executar els benchmarks
 
 ```bash
-python benchmarks/run.py
+python -m source.benchmarks.run
 ```
 
-Genera `benchmarks/results.csv` amb els temps d'execucio i `benchmarks/results.png` amb el grafic comparatiu de tots els algorismes per a mides de graf N = 10 fins a N = 500.
+Genera `source/benchmarks/results.csv` amb els temps d'execucio i `source/benchmarks/results.png` amb el grafic comparatiu de tots els algorismes per a mides de graf N = 10 fins a N = 500.
 
 ---
 
 ## Estructura del Projecte
 
+Tot el codi font viu sota `source/` (requisit imposat per l'enunciat). Els tests, benchmarks, dades de mostra i el codi del motor son subpaquets dins d'aquest directori. Els informes generats es desen per defecte a `out/` a l'arrel.
+
 ```text
 RedTrace/
 |
-+-- cli/
-|   +-- gui.py                      # Interficie grafica PySide6
++-- source/                         # Codi font del projecte (paquet arrel)
+|   |
+|   +-- cli/                        # Punts d'entrada
+|   |   +-- __init__.py
+|   |   +-- main.py                 # CLI argparse (--topology, --strategy, ...)
+|   |   +-- gui.py                  # Interficie grafica PySide6 + matplotlib
+|   |
+|   +-- engine/                     # Motor d'algorismes (core)
+|   |   +-- __init__.py
+|   |   +-- base.py                 # ABCs: AttackPathFinder, RouteStrategy,
+|   |   |                           #       RiskClassifier, ReportGenerator
+|   |   +-- types.py                # Dataclasses: Node, Edge, Path,
+|   |   |                           #              IDSResult, AnalysisReport
+|   |   +-- graph.py                # TopologyGraph — embolcalla nx.DiGraph
+|   |   +-- dijkstra.py             # DijkstraFinder — ruta de minim pes
+|   |   +-- bfs.py                  # BFSFinder — ruta de menys salts
+|   |   +-- dfs.py                  # CycleDetector — DFS recursiu de cicles
+|   |   +-- ids_sim.py              # IDSSimulator — taula hash de firmes
+|   |   +-- decision_tree.py        # Classificador de risc ID3
+|   |   +-- risk.py                 # Fabrica de classificadors de risc
+|   |   +-- all_paths.py            # AllPathsFinder — backtracking recursiu
+|   |   +-- route_strategy.py       # ShortestRoute, SafestRoute, FewestHopsRoute
+|   |
+|   +-- scanner/                    # Ingesta de dades
+|   |   +-- __init__.py
+|   |   +-- parser.py               # NetworkParser — llegeix topology.json
+|   |   +-- normalizer.py           # Normalitzacio i validacio de la topologia
+|   |   +-- synthetic.py            # Generador de topologies sintetiques O(n^2)
+|   |
+|   +-- report/                     # Generacio d'informes
+|   |   +-- generator.py            # JSONReportGenerator + TextReportGenerator
+|   |   +-- visualizer.py           # Visualitzacio del graf amb matplotlib
+|   |
+|   +-- benchmarks/                 # Rendiment comparatiu
+|   |   +-- __init__.py
+|   |   +-- run.py                  # Script de benchmark (N = 10..500)
+|   |
+|   +-- data/                       # Dades de mostra i datasets
+|   |   +-- topology_mock.json      # Topologia d'exemple (s'autocarrega a la GUI)
+|   |   +-- risk_dataset.csv        # Dataset d'entrenament del classificador ID3
+|   |
+|   +-- Tests/                      # Suite de tests (pytest)
+|       +-- __init__.py
+|       +-- test_all_paths.py
+|       +-- test_bfs.py
+|       +-- test_dijkstra.py
+|       +-- test_parser.py
+|       +-- test_route_strategy_extra.py
+|       +-- test_synthetic.py
 |
-+-- engine/                         # Motor d'algorismes (core)
-|   +-- base.py                     # ABCs: AttackPathFinder, RouteStrategy,
-|   |                               #       RiskClassifier, ReportGenerator
-|   +-- types.py                    # Dataclasses: Node, Edge, Path,
-|   |                               #              IDSResult, AnalysisReport
-|   +-- graph.py                    # TopologyGraph — embolcalla nx.DiGraph
-|   +-- dijkstra.py                 # DijkstraFinder — ruta de minim pes
-|   +-- bfs.py                      # BFSFinder — ruta de menys salts
-|   +-- dfs.py                      # CycleDetector — DFS recursiu de cicles
-|   +-- ids_sim.py                  # IDSSimulator — taula hash de firmes
-|   +-- decision_tree.py            # Classificador de risc ID3
-|   +-- risk.py                     # Fabrica de classificadors de risc
-|   +-- all_paths.py                # AllPathsFinder — backtracking recursiu
-|   +-- route_strategy.py           # ShortestRoute, SafestRoute, FewestHopsRoute
-|   +-- __init__.py
++-- docs/                           # Documentacio grafica
+|   +-- UMLClasses.png              # Diagrama UML de classes
+|   +-- FullFlux.png                # Diagrama de flux complet del pipeline
+|   +-- DijkstraFlux.png            # Flux de l'algorisme Dijkstra
+|   +-- BFSFlux.png                 # Flux de l'algorisme BFS
+|   +-- IDSsimulatorFlux.png        # Flux de l'IDSSimulator
 |
-+-- scanner/                        # Ingesta de dades
-|   +-- parser.py                   # NetworkParser — llegeix topology.json
-|   +-- normalizer.py               # Normalitzacio i validacio de la topologia
-|   +-- synthetic.py                # Generador de topologies sintetiques O(n^2)
-|   +-- __init__.py
++-- out/                            # Sortida de les execucions (es crea sola)
+|   +-- report.json                 # Informe estructurat
+|   +-- report.txt                  # Informe en text pla
+|   +-- topology.png                # Visualitzacio del graf amb la ruta destacada
 |
-+-- report/                         # Generacio d'informes
-|   +-- generator.py                # JSONReportGenerator + TextReportGenerator
-|   +-- visualizer.py               # Visualitzacio del graf amb matplotlib
-|   +-- __init__.py
-|
-+-- benchmarks/                     # Rendiment comparatiu
-|   +-- run.py                      # Script de benchmark (N = 10..500)
-|   +-- results.csv                 # Resultats numerics
-|   +-- results.png                 # Grafic comparatiu
-|   +-- summary.md                  # Analisi de temps mitjans
-|
-+-- Tests/                          # Suite de tests (pytest)
-|   +-- test_all_paths.py
-|   +-- test_bfs.py
-|   +-- test_dijkstra.py
-|   +-- test_parser.py
-|   +-- test_route_strategy_extra.py
-|   +-- test_synthetic.py
-|   +-- __init__.py
-|
-+-- docs/                           # Documentacio tecnica
-|   +-- complexity_analysis.md      # Analisi formal: best/avg/worst per algorisme
-|   +-- new_features.md             # Propostes de noves funcionalitats (Fase 3)
-|   +-- future_work.md              # Optimitzacions i treball futur
-|   +-- uml/                        # Diagrames UML en Mermaid
-|   |   +-- classes_RedTrace.mmd
-|   |   +-- packages_RedTrace.mmd
-|   +-- flow/                       # Diagrames de flux per algorisme
-|       +-- dijkstra.md
-|       +-- dfs_cycles.md
-|       +-- all_paths.md
-|       +-- ids_evaluate.md
-|       +-- pipeline_cli.md
-|
-+-- out/                            # Sortida de l'ultima execucio
-|   +-- report.json
-|   +-- report.txt
-|
++-- .gitignore
++-- LICENSE.txt
++-- README.md
 +-- requirements.txt
-+-- LICENSE
 ```
+
+> **Nota sobre namespace packages**: `source/` no conté `__init__.py` a l'arrel — és un *namespace package* (PEP 420). Els subpaquets (`engine`, `scanner`, `cli`, etc.) sí que en tenen. Tots els imports interns son absoluts (`from source.engine.dijkstra import DijkstraFinder`), per això cal executar el codi com a modul des de l'arrel del repositori (`python -m source.cli.main`).
 
 ---
 
@@ -731,14 +738,14 @@ RedTrace/
 
 | Parametre | Valor per defecte | Fitxer | Descripcio |
 |-----------|-------------------|--------|------------|
-| Llindar risc CRITICAL | 0.80 | `route_strategy.py` | Nodes amb risc >= valor son considerats critics per SafestRoute i FewestHopsRoute |
-| Hops maxims IDS | 4 | `ids_sim.py` | Firma `long_path`: rutes amb mes salts son detectades |
-| Risc mig maxim IDS | 0.70 | `ids_sim.py` | Firma `high_avg_risk`: per sobre d'aquest valor es dispara la firma |
-| Critics consecutius IDS | 2 | `ids_sim.py` | Nombre de nodes CRITICAL seguits que activen `consecutive_critical` |
-| Densitat arestes sintetica | 0.25 | `synthetic.py` | Fraccio d'arestes possibles que es generen |
-| Ratio critics sintetic | 0.20 | `synthetic.py` | Fraccio de nodes generats amb ports d'alt risc |
-| Max paths (backtracking) | 100 | `all_paths.py` | Limit de camins per evitar explosio factorial en grafs grans |
-| Dataset ID3 | `data/risk_dataset.csv` | `decision_tree.py` | Path del dataset d'entrenament; es genera automaticament si no existeix |
+| Llindar risc CRITICAL | 0.80 | `source/engine/route_strategy.py` | Nodes amb risc >= valor son considerats critics per SafestRoute i FewestHopsRoute |
+| Hops maxims IDS | 4 | `source/engine/ids_sim.py` | Firma `long_path`: rutes amb mes salts son detectades |
+| Risc mig maxim IDS | 0.70 | `source/engine/ids_sim.py` | Firma `high_avg_risk`: per sobre d'aquest valor es dispara la firma |
+| Critics consecutius IDS | 2 | `source/engine/ids_sim.py` | Nombre de nodes CRITICAL seguits que activen `consecutive_critical` |
+| Densitat arestes sintetica | 0.25 | `source/scanner/synthetic.py` | Fraccio d'arestes possibles que es generen |
+| Ratio critics sintetic | 0.20 | `source/scanner/synthetic.py` | Fraccio de nodes generats amb ports d'alt risc |
+| Max paths (backtracking) | 100 | `source/engine/all_paths.py` | Limit de camins per evitar explosio factorial en grafs grans |
+| Dataset ID3 | `source/data/risk_dataset.csv` | `source/engine/decision_tree.py` | Path del dataset d'entrenament; es genera automaticament si no existeix |
 
 ### Ports per nivell de risc
 
@@ -765,7 +772,7 @@ Durant el desenvolupament de RedTrace s'ha fet servir Intel·ligencia Artificial
 ### Arees on s'ha utilitzat IA
 
 1. **Disseny arquitectural** *(Assisted by Claude — Anthropic)*
-   - Definicio de les ABCs a `engine/base.py` i la jerarquia `AttackPathFinder -> DijkstraFinder / BFSFinder / AStarFinder`.
+   - Definicio de les ABCs a `source/engine/base.py` i la jerarquia `AttackPathFinder -> DijkstraFinder / BFSFinder / AStarFinder`.
    - Aplicacio del patro `Strategy` a `RouteStrategy` per garantir el principi Open/Closed i permetre seleccio en temps d'execucio sense modificar el codi client.
 
 2. **Disseny del format d'interoperabilitat**
@@ -815,7 +822,7 @@ Durant el desenvolupament de RedTrace s'ha fet servir Intel·ligencia Artificial
 
 - [x] `AllPathsFinder` — backtracking recursiu pur amb `max_paths` i `max_depth`
 - [x] `BFSFinder` + `FewestHopsRoute` — tercera estrategia polimòrfica
-- [x] Generador de topologies sintetiques (`scanner/synthetic.py`)
+- [x] Generador de topologies sintetiques (`source/scanner/synthetic.py`)
 - [x] Suite de benchmarks (N = 10..500, CSV + grafic PNG)
 - [x] Analisi formal de complexitat (best/avg/worst/espai per algorisme)
 - [x] Diagrames UML de classes i paquets (Mermaid)

@@ -12,7 +12,7 @@ from source.engine.types import Edge, Node, Path
 
 
 class BFSFinder(AttackPathFinder):
-"""Ajuda amb ús d'IA: inici"""
+    """Ajuda amb ús d'IA: inici"""
     """Troba el camí amb el menor nombre d'arestes (hops). (WIP)"""
 
     def __init__(self, blocked_nodes: Optional[Set[str]] = None):
