@@ -1,7 +1,7 @@
-"""Arbre de decisió ID3 (entropia) per classificar el risc dels nodes.
+"""Arbre de decisió ID3 (entropia) per classificar el risc dels nodes
 
 S'entrena amb un dataset sintètic de ~200 files generat segons regles de
-seguretat de moviment lateral. Si el CSV no existeix, es genera al primer ús.
+seguretat de moviment lateral. Si el CSV no existeix, es genera al primer ús
 """
 
 from pathlib import Path as _PathLib
@@ -15,6 +15,7 @@ from engine.base import RiskClassifier
 from engine.risk import make_classifier
 from engine.types import Node, RiskLevel
 
+"""Columnes de features que s'utilitzen per entrenar i predir"""
 FEATURE_COLS = (
     "has_smb",
     "has_rdp",
@@ -27,6 +28,7 @@ FEATURE_COLS = (
 DEFAULT_DATASET_PATH = _PathLib("data") / "risk_dataset.csv"
 DB_SERVICES = {"mysql", "postgres", "postgresql", "oracle", "mssql", "mongo", "mongodb"}
 
+
 def _label_from_rules(
     has_smb: int,
     has_rdp: int,
@@ -36,6 +38,7 @@ def _label_from_rules(
     has_db: int,
     num_ports: int,
 ) -> str:
+    """Assigna una etiqueta de risc a partir de regles heurístiques de moviment lateral"""
     if has_telnet:
         return "CRITICAL"
     if has_db and num_ports >= 4:
@@ -59,9 +62,12 @@ def generate_synthetic_dataset(
     noise_ratio: float = 0.08,
     seed: int = 42,
 ) -> pd.DataFrame:
+    """Genera un dataset sintètic de risc i el desa en CSV"""
     rng = np.random.default_rng(seed)
     rows = []
     labels = ("LOW", "MEDIUM", "CRITICAL")
+
+    """ IA: inici """
     for _ in range(n_rows):
         has_smb = int(rng.random() < 0.40)
         has_rdp = int(rng.random() < 0.30)
@@ -74,6 +80,7 @@ def generate_synthetic_dataset(
         label = _label_from_rules(
             has_smb, has_rdp, has_telnet, has_ssh, has_http, has_db, num_ports
         )
+        # Introdueix soroll aleatori per evitar overfitting perfecte
         if rng.random() < noise_ratio:
             label = str(rng.choice(labels))
 
@@ -89,14 +96,16 @@ def generate_synthetic_dataset(
                 "label": label,
             }
         )
+    
 
     df = pd.DataFrame(rows)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     return df
-
+    """ IA: fi """
 
 def _extract_features(node: Node) -> List[int]:
+    """Extreu el vector de features d'un node a partir dels seus ports i serveis"""
     services = {s.lower() for s in node.services.values()}
     has_smb = int("smb" in services or 445 in node.ports)
     has_rdp = int("rdp" in services or 3389 in node.ports)
@@ -108,19 +117,24 @@ def _extract_features(node: Node) -> List[int]:
         or 80 in node.ports
         or 443 in node.ports
     )
+    """ IA: inici """
     has_db = int(any(s in DB_SERVICES for s in services))
     return [has_smb, has_rdp, has_telnet, has_ssh, has_http, has_db, len(node.ports)]
+    """ IA: fi """
 
 
 class DecisionTreeRiskClassifier:
-    """Embolcalla un DecisionTreeClassifier de scikit-learn. WIP."""
+    """Embolcalla un DecisionTreeClassifier de scikit-learn per classificar el risc dels nodes"""
 
+    """ IA: inici """
     def __init__(self, dataset_path: _PathLib = DEFAULT_DATASET_PATH):
         self.dataset_path = dataset_path
         self.model = DecisionTreeClassifier(criterion="entropy", random_state=42)
         self._trained: bool = False
+    """ IA: fi """
 
     def ensure_trained(self) -> None:
+        """Entrena el model si encara no ho està, generant el dataset si cal"""
         if self._trained:
             return
         if not self.dataset_path.exists():
@@ -132,13 +146,17 @@ class DecisionTreeRiskClassifier:
         self._trained = True
 
     def classify(self, node: Node) -> RiskLevel:
+        """Prediu el nivell de risc d'un node a partir del seu vector de features"""
         self.ensure_trained()
         features = np.array([_extract_features(node)])
         prediction = self.model.predict(features)[0]
-        return RiskLevel(str(prediction))  
+        return RiskLevel(str(prediction))
+
     def get_classifier(self, node: Node) -> RiskClassifier:
+        """Retorna el RiskClassifier corresponent al nivell de risc del node"""
         return make_classifier(self.classify(node))
 
     def annotate_nodes(self, nodes: List[Node]) -> None:
+        """Assigna el nivell de risc a cada node de la llista"""
         for n in nodes:
-            n.risk_level = self.classify(n)    
+            n.risk_level = self.classify(n)

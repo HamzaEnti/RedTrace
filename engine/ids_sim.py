@@ -1,13 +1,14 @@
-"""Simulador d'IDS basat en taula hash de firmes.
+"""Simulador d'IDS basat en taula hash de firmes
 
-El diccionari signatures és la taula hash (R2 enunciat). Cada firma és una
-funció que avalua una Path i retorna (detected: bool, message: str).
+El diccionari signatures és la taula hash. Cada firma és una
+funció que avalua una Path
 """
 
 from typing import Callable, Dict, Tuple
 
 from engine.types import IDSResult, Path, RiskLevel
 
+"""Llindars de detecció de les firmes"""
 HOPS_THRESHOLD = 4
 TELNET_PORT = 23
 CRITICAL_CONSECUTIVE_THRESHOLD = 2
@@ -17,7 +18,7 @@ SignatureFn = Callable[[Path], Tuple[bool, str]]
 
 
 class IDSSimulator:
-    """Avalua una ruta contra un conjunt de firmes conegudes."""
+    """Avalua una ruta contra un conjunt de firmes conegudes"""
 
     def __init__(self):
         self.signatures: Dict[str, SignatureFn] = {
@@ -28,6 +29,7 @@ class IDSSimulator:
         }
 
     def evaluate(self, path: Path) -> IDSResult:
+        """Executa totes les firmes sobre la ruta i retorna el resultat agregat"""
         triggered = []
         messages = []
         for name, check in self.signatures.items():
@@ -44,19 +46,23 @@ class IDSSimulator:
 
     @staticmethod
     def _sig_long_path(path: Path) -> Tuple[bool, str]:
+        """Detecta rutes amb més salts dels permesos"""
         if path.hops > HOPS_THRESHOLD:
             return True, f"Ruta amb {path.hops} salts (> {HOPS_THRESHOLD})"
         return False, ""
 
     @staticmethod
     def _sig_telnet_in_path(path: Path) -> Tuple[bool, str]:
+        """Detecta si algun node de la ruta té el port Telnet obert"""
         for n in path.nodes:
             if TELNET_PORT in n.ports:
                 return True, f"Node {n.id} amb Telnet (port 23) a la ruta"
         return False, ""
-    
+
+    """ IA: inici """
     @staticmethod
     def _sig_consecutive_critical(path: Path) -> Tuple[bool, str]:
+        """Detecta seqüències de nodes CRITICAL consecutius per sobre del llindar"""
         run = 0
         max_run = 0
         for n in path.nodes:
@@ -72,9 +78,10 @@ class IDSSimulator:
                 f"(>= {CRITICAL_CONSECUTIVE_THRESHOLD})",
             )
         return False, ""
-    
+
     @staticmethod
     def _sig_high_avg_risk(path: Path) -> Tuple[bool, str]:
+        """Detecta rutes amb un risc mitjà acumulat superior al llindar"""
         if path.avg_risk > HIGH_AVG_RISK_THRESHOLD:
             return (
                 True,
@@ -82,3 +89,4 @@ class IDSSimulator:
                 f"(> {HIGH_AVG_RISK_THRESHOLD:.2f})",
             )
         return False, ""
+    """ IA: fi """

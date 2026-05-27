@@ -21,6 +21,13 @@ class TopologyGraph:
     def add_edge(self, edge: Edge) -> None:
         self._g.add_edge(edge.from_node, edge.to_node, weight=edge.weight)
 
+    def build(self, nodes: Iterable[Node], edges: Iterable[Edge]) -> "TopologyGraph":
+        for n in nodes:
+            self.add_node(n)
+        for e in edges:
+            self.add_edge(e)
+        return self
+
     def get_node(self, node_id: str) -> Optional[Node]:
         return self._nodes.get(node_id)
 
